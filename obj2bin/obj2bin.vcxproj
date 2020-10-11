@@ -100,11 +100,11 @@
       <Command>if exist AutoVersion.bat AutoVersion.bat version.h</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>if exist $(SolutionDir)install.cfg call $(SolutionDir)..\tools\install.cmd $(TargetPath) $(SolutionDir) &amp;
+      <Command>if exist $(SolutionDir)install.cfg call $(SolutionDir)Scripts\install.cmd $(TargetPath) $(SolutionDir) &amp;
 copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO</Command>
     </PostBuildEvent>
     <CustomBuildStep>
-      <Command>call $(SolutionDir)..\tools\version.cmd "$(ProjectDir)Generated\" "$(ProjectDir)Generated\version.h"</Command>
+      <Command>call $(SolutionDir)Scripts\version.cmd "$(ProjectDir)Generated\" "$(ProjectDir)Generated\version.h"</Command>
       <Outputs>$(ProjectDir)Generated\version.h;</Outputs>
       <Inputs>$(ProjectDir)Generated\GIT_VERSION_INFO</Inputs>
     </CustomBuildStep>
@@ -123,11 +123,11 @@ copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO</Command>
       <Command>if exist AutoVersion.bat AutoVersion.bat version.h</Command>
     </PreBuildEvent>
     <PostBuildEvent>
-      <Command>if exist $(SolutionDir)install.cfg call $(SolutionDir)..\tools\install.cmd $(TargetPath) $(SolutionDir) &amp;
+      <Command>if exist $(SolutionDir)install.cfg call $(SolutionDir)Scripts\install.cmd $(TargetPath) $(SolutionDir) &amp;
 copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO</Command>
     </PostBuildEvent>
     <CustomBuildStep>
-      <Command>call $(SolutionDir)..\tools\version.cmd "$(ProjectDir)Generated\" "$(ProjectDir)Generated\version.h"</Command>
+      <Command>call $(SolutionDir)Scripts\version.cmd "$(ProjectDir)Generated\" "$(ProjectDir)Generated\version.h"</Command>
       <Outputs>$(ProjectDir)Generated\version.h;</Outputs>
       <Inputs>$(ProjectDir)Generated\GIT_VERSION_INFO</Inputs>
     </CustomBuildStep>
@@ -149,7 +149,7 @@ copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO</Command>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <PostBuildEvent>
-      <Command>if exist $(SolutionDir)install.cfg call $(SolutionDir)..\tools\install.cmd $(TargetPath) $(SolutionDir) &amp;
+      <Command>if exist $(SolutionDir)install.cfg call $(SolutionDir)Scripts\install.cmd $(TargetPath) $(SolutionDir) &amp;
 copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO</Command>
     </PostBuildEvent>
     <PreBuildEvent>
@@ -157,7 +157,7 @@ copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO</Command>
       <Message>Generating version.h</Message>
     </PreBuildEvent>
     <CustomBuildStep>
-      <Command>call $(SolutionDir)..\tools\version.cmd "$(ProjectDir)Generated\" "$(ProjectDir)Generated\version.h"</Command>
+      <Command>call $(SolutionDir)Scripts\version.cmd "$(ProjectDir)Generated\" "$(ProjectDir)Generated\version.h"</Command>
     </CustomBuildStep>
     <CustomBuildStep>
       <Message>Performing Custom Build Step</Message>
@@ -182,7 +182,7 @@ copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO</Command>
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <PostBuildEvent>
-      <Command>if exist $(SolutionDir)install.cfg call $(SolutionDir)..\tools\install.cmd $(TargetPath) $(SolutionDir) &amp;
+      <Command>if exist $(SolutionDir)install.cfg call $(SolutionDir)Scripts\install.cmd $(TargetPath) $(SolutionDir) &amp;
 copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO</Command>
     </PostBuildEvent>
     <PreBuildEvent>
@@ -190,7 +190,7 @@ copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO</Command>
       <Message>Generating version.h</Message>
     </PreBuildEvent>
     <CustomBuildStep>
-      <Command>call $(SolutionDir)..\tools\version.cmd "$(ProjectDir)Generated\" "$(ProjectDir)Generated\version.h"</Command>
+      <Command>call $(SolutionDir)Scripts\version.cmd "$(ProjectDir)Generated\" "$(ProjectDir)Generated\version.h"</Command>
     </CustomBuildStep>
     <CustomBuildStep>
       <Message>Performing Custom Build Step</Message>

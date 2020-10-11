@@ -26,11 +26,11 @@
   </PropertyGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="if exist $(SolutionDir)install.cfg call $(SolutionDir)..\tools\install.cmd $(TargetPath) $(SolutionDir)&#xD;&#xA;copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO" />
+    <Exec Command="if exist $(SolutionDir)install.cfg call $(SolutionDir)Scripts\install.cmd $(TargetPath) $(SolutionDir)&#xD;&#xA;copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO" />
   </Target>
 
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-    <Exec Command="call $(SolutionDir)..\tools\version.cmd &quot;$(ProjectDir)Generated\&quot; &quot;$(ProjectDir)Generated\version.g.cs&quot;" />
+    <Exec Command="call $(SolutionDir)Scripts\version.cmd &quot;$(ProjectDir)Generated\&quot; &quot;$(ProjectDir)Generated\version.g.cs&quot;" />
   </Target>
 
 </Project>
