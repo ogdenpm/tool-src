@@ -105,8 +105,8 @@ copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO</Command>
     </PostBuildEvent>
     <CustomBuildStep>
       <Command>call $(SolutionDir)Scripts\version.cmd "$(ProjectDir)Generated\" "$(ProjectDir)Generated\version.h"</Command>
-      <Outputs>$(ProjectDir)Generated\version.h;</Outputs>
-      <Inputs>$(ProjectDir)Generated\GIT_VERSION_INFO</Inputs>
+      <Outputs>$(ProjectDir)Generated\version.h</Outputs>
+      <Inputs>.force</Inputs>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -128,8 +128,8 @@ copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO</Command>
     </PostBuildEvent>
     <CustomBuildStep>
       <Command>call $(SolutionDir)Scripts\version.cmd "$(ProjectDir)Generated\" "$(ProjectDir)Generated\version.h"</Command>
-      <Outputs>$(ProjectDir)Generated\version.h;</Outputs>
-      <Inputs>$(ProjectDir)Generated\GIT_VERSION_INFO</Inputs>
+      <Outputs>$(ProjectDir)Generated\version.h</Outputs>
+      <Inputs>.force</Inputs>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -163,8 +163,8 @@ copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO</Command>
       <Message>Performing Custom Build Step</Message>
     </CustomBuildStep>
     <CustomBuildStep>
-      <Outputs>$(ProjectDir)Generated\version.h;</Outputs>
-      <Inputs>$(ProjectDir)Generated\GIT_VERSION_INFO</Inputs>
+      <Outputs>$(ProjectDir)Generated\version.h</Outputs>
+      <Inputs>.force</Inputs>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -196,8 +196,8 @@ copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO</Command>
       <Message>Performing Custom Build Step</Message>
     </CustomBuildStep>
     <CustomBuildStep>
-      <Outputs>$(ProjectDir)Generated\version.h;</Outputs>
-      <Inputs>$(ProjectDir)Generated\GIT_VERSION_INFO</Inputs>
+      <Outputs>$(ProjectDir)Generated\version.h</Outputs>
+      <Inputs>.force</Inputs>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
