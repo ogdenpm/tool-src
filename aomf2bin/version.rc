@@ -19,12 +19,10 @@ BEGIN
             VALUE "FileDescription", "convert aomf (85, 86, 286) to binary file"
             VALUE "FileVersion", GIT_VERSION
             VALUE "LegalCopyright", "(C)" GIT_YEAR "  Mark Ogden"
-#ifdef GIT_APPID
-            VALUE "OriginalFilename", GIT_APPID ".exe"
-            VALUE "ProductName", GIT_APPID
-#endif
+            VALUE "OriginalFilename", GIT_APPNAME ".exe"
+            VALUE "ProductName", GIT_APPNAME
             VALUE "ProductVersion", GIT_VERSION
-        END
+    END
     END
     BLOCK "VarFileInfo"
     BEGIN

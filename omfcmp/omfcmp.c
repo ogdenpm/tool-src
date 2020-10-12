@@ -1,28 +1,24 @@
 /****************************************************************************
+ *                                                                          *
  *  omfcmp: compare two omf85 files                                         *
  *  Copyright (C) 2020 Mark Ogden <mark.pm.ogden@btinternet.com>            *
  *                                                                          *
- *  Permission is hereby granted, free of charge, to any person             *
- *  obtaining a copy of this software and associated documentation          *
- *  files (the "Software"), to deal in the Software without restriction,    *
- *  including without limitation the rights to use, copy, modify, merge,    *
- *  publish, distribute, sublicense, and/or sell copies of the Software,    *
- *  and to permit persons to whom the Software is furnished to do so,       *
- *  subject to the following conditions:                                    *
+ *  This program is free software; you can redistribute it and/or           *
+ *  modify it under the terms of the GNU General Public License             *
+ *  as published by the Free Software Foundation; either version 2          *
+ *  of the License, or (at your option) any later version.                  *
  *                                                                          *
- *  The above copyright notice and this permission notice shall be          *
- *  included in all copies or substantial portions of the Software.         *
+ *  This program is distributed in the hope that it will be useful,         *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of          *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the           *
+ *  GNU General Public License for more details.                            *
  *                                                                          *
- *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,         *
- *  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF      *
- *  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  *
- *  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY    *
- *  CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,    *
- *  TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE       *
- *  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                  *
+ *  You should have received a copy of the GNU General Public License       *
+ *  along with this program; if not, write to the Free Software             *
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,              *
+ *  MA  02110-1301, USA.                                                    *
  *                                                                          *
  ****************************************************************************/
-
 
 #include "omfcmp.h"
 #include "omf.h"
@@ -177,46 +173,46 @@ void addContent(content_t *con, word addr, word length, byte *image)
 
 void dumpDiff(omf_t *left, omf_t *right, int start, int cnt)
 {
-	printf("%04X:", start);
-	for (int i = 0; i < DUMPLEN; i++)
-		if (i < cnt)
-			printf(" %02X", left->image[start + i]);
-		else
-			printf("   ");
-	printf(" |");
-	for (int i = 0; i < DUMPLEN; i++)
-		printf("%c", i < cnt && isprint(left->image[start + i]) ? left->image[start + i] : '.');
-	printf("| :");
-	for (int i = 0; i < DUMPLEN; i++)
-		if (i >= cnt)
-			printf("   ");
-		else if (left->image[start + i] != right->image[start + i])
-			printf(" %02X", right->image[start + i]);
-		else
-			printf(" ==");
-	printf(" |");
-	for (int i = 0; i < DUMPLEN; i++)
-		printf("%c", i < cnt && isprint(right->image[start + i]) ? right->image[start + i] : '.');
-	printf("|\n");
+    printf("%04X:", start);
+    for (int i = 0; i < DUMPLEN; i++)
+        if (i < cnt)
+            printf(" %02X", left->image[start + i]);
+        else
+            printf("   ");
+    printf(" |");
+    for (int i = 0; i < DUMPLEN; i++)
+        printf("%c", i < cnt && isprint(left->image[start + i]) ? left->image[start + i] : '.');
+    printf("| :");
+    for (int i = 0; i < DUMPLEN; i++)
+        if (i >= cnt)
+            printf("   ");
+        else if (left->image[start + i] != right->image[start + i])
+            printf(" %02X", right->image[start + i]);
+        else
+            printf(" ==");
+    printf(" |");
+    for (int i = 0; i < DUMPLEN; i++)
+        printf("%c", i < cnt && isprint(right->image[start + i]) ? right->image[start + i] : '.');
+    printf("|\n");
 }
 
 /* print out the binary differences*/
 void diffBinary(omf_t *left, omf_t *right)
 {
-	int cmplen = left->size < right->size ? left->size : right->size;
+    int cmplen = left->size < right->size ? left->size : right->size;
 
     printf("%s : %s ===Binary difference===\n", left->name, right->name);
 
     int i = 0;
-	while (i < cmplen) {
-		if (left->image[i] != right->image[i]) {
-			i = (i / DUMPLEN) * DUMPLEN;		// truncate to block boundary
-			dumpDiff(left, right, (i / DUMPLEN) * DUMPLEN, (i + DUMPLEN <= cmplen) ? DUMPLEN : cmplen - i);
-			i += DUMPLEN;
-		}
-		else
-			i++;
-	}
+    while (i < cmplen) {
+        if (left->image[i] != right->image[i]) {
+            i = (i / DUMPLEN) * DUMPLEN;		// truncate to block boundary
+            dumpDiff(left, right, (i / DUMPLEN) * DUMPLEN, (i + DUMPLEN <= cmplen) ? DUMPLEN : cmplen - i);
+            i += DUMPLEN;
+        }
+        else
+            i++;
+    }
 
     if (left->size > right->size) {
         printf("%s is longer\n", left->name);

@@ -201,9 +201,6 @@ copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO</Command>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="version.h" />
-  </ItemGroup>
-  <ItemGroup>
     <ResourceCompile Include="version.rc" />
   </ItemGroup>
   <ItemGroup>
