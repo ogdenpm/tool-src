@@ -29,7 +29,7 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="version.rc">
-      <Filter>Source Files</Filter>
+      <Filter>Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>
 </Project>
