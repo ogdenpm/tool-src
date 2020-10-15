@@ -28,9 +28,10 @@
 
 #define MAXMEM 0x11000
 #define MAXCOL 60
-#define MINRUN 3
+#define MINRUN 5
 
-uint8_t mem[MAXMEM];
+uint8_t objMem[MAXMEM];
+uint8_t binMem[MAXMEM];
 uint8_t use[MAXMEM];
 
 unsigned low = 0x10000;
@@ -38,7 +39,7 @@ unsigned high = 0;
 
 unsigned start = 0x10000;
 
-enum { UNUSED = 0, OBJ, SKIP, CHANGE, DELETE, APPEND };
+enum { UNUSED = 0, OBJ, SKIP, INIT, CHANGE, DELETE, APPEND };
 
 void showVersion(FILE *fp, bool full);
 
@@ -69,12 +70,13 @@ bool loadBin(char *file, bool isIntel, bool defaultZero) {
             fprintf(stderr, "load address != 0x100, possibly a problem for CP/M .COM file\n");
         addr = low;
         while ((c = getc(fp)) != EOF && addr < MAXMEM) {
-            if ((use[addr] == UNUSED && (c != 0 || !defaultZero)) || use[addr] == OBJ && mem[addr] != c) {
+            if ((use[addr] == UNUSED && (c != 0 || !defaultZero)))
+                use[addr] = addr < high ? INIT : APPEND;
+            else if (use[addr] == OBJ && objMem[addr] != c)
                 use[addr] = addr < high ? CHANGE : APPEND;
-                mem[addr] = c;
-            } else
+            else
                 use[addr] = addr < high ? SKIP : APPEND;
-            addr++;
+            binMem[addr++] = c;
         }
         if (addr >= MAXMEM)
             fprintf(stderr, "Too many patch bytes\n");
@@ -93,19 +95,20 @@ bool loadBin(char *file, bool isIntel, bool defaultZero) {
             if (addr < low)
                 low = addr;
             while (len-- > 0 && (c = getc(fp)) != EOF && addr < MAXMEM) {
-                if (use[addr] = UNUSED || use[addr] == OBJ && mem[addr] != c) {
-                    use[addr] = CHANGE;
-                    mem[addr] = c;
-                } else
-                    use[addr] = SKIP;
-                addr++;
+                if (use[addr] = UNUSED && (c != 0 || !defaultZero))
+                    use[addr] = addr < high ? INIT : APPEND;
+                else if (use[addr] == OBJ && objMem[addr] != c)
+                    use[addr] = addr < high ? CHANGE : APPEND;
+                else
+                    use[addr] = addr < high ? SKIP : APPEND;
+                    binMem[addr++] = c;
             }
         }
         addr = getword(fp);
         if (addr >= 0x10000 || addr != start)
             fprintf(stderr, "Warning start address mismatch OBJ: %04X, BIN: %04X\n", start, addr);
         while ((c = getc(fp)) != EOF && high < MAXMEM) {
-            mem[high] = c;
+            objMem[high] = c;
             use[high++] = APPEND;
         }
         if (c != EOF)
@@ -178,7 +181,7 @@ bool read6(FILE *fp, int len) {
         low = addr;
     c = 0;
     while (len-- > 0 && (c = getc(fp)) != EOF) {
-        mem[addr] = c;
+        objMem[addr] = c;
         use[addr++] = OBJ;
     }
     if (addr > high)
@@ -216,86 +219,90 @@ int typeRunLen(unsigned addr) {
 
 int valRunLen(unsigned addr) {
     unsigned i;
-    for (i = addr + 1; i < high && use[addr] == use[i] && mem[addr] == mem[i] ; i++)
+    for (i = addr + 1; i < high && use[addr] == use[i] && binMem[addr] == binMem[i] ; i++)
         ;
     return i -addr;
 
 }
 
-void genPatch(char *file, bool showSting) {
-    FILE *fp;
-    unsigned addr;
+
+void genPatch(FILE *fp, int usage, char *heading,  bool showString) {
+    bool haveSection = false;
     unsigned runlen;
+    unsigned samelen;
     unsigned col = 0;
-    int prevUse = -1;
-    int thisUse;
+    unsigned prevAddr = ~0;
+
+    for (unsigned addr = low; addr < high; addr += runlen) {
+        runlen = 1;
+        if (use[addr] == usage) {
+            if (!haveSection) {
+                fprintf(fp, "%s\n", heading);
+                haveSection = true;
+            }
+            runlen = typeRunLen(addr);      // how many we have
+            switch (usage) {
+            case CHANGE:                    // show the old values as comments
+            case DELETE:
+                if (usage == DELETE)        // delete just show as single block
+                    fprintf(fp, "%04X   - x %02X\n", addr, runlen);
+
+                for (unsigned i = 0; i < runlen; i += 16) {
+                    if (usage == CHANGE) {  // change show block of new values
+                        fprintf(fp, "%04X", addr + i);
+                        for (unsigned j = 0; j < 16 && i + j < runlen; j++)
+                            fprintf(fp, " %02X", binMem[addr + i + j]);
+                        putc('\n', fp);
+                    }
+                    fprintf(fp, ";>>>");
+                    for (unsigned j = 0; j < 16 && i + j < runlen; j++)
+                        fprintf(fp, " %02X", objMem[addr + i + j]);
+                    fputs(" <<<\n", fp);
+                }
+                break;
+            case INIT:
+            case APPEND:
+                col = 0;
+                for (unsigned i = 0; i < runlen; i += samelen) {
+                    if (col > MAXCOL) {
+                        putc('\n', fp);
+                        col = 0;
+                    }
+                    if (col == 0 && usage == INIT)
+                        col += fprintf(fp, "%04X", addr + i);
+
+                    samelen = valRunLen(addr + i);
+                    if (samelen >= MINRUN)
+                        col += fprintf(fp, " %02X x %02X", binMem[addr + i], samelen);
+                    else {
+                        col += fprintf(fp, " %02X", binMem[addr + i]);
+                        samelen = 1;
+                    }
+                }
+                if (col)
+                    putc('\n', fp);
+            }
+        }
+
+    }
+    if (haveSection)
+        putc('\n', fp);
+
+}
+
+void genPatchFile(char *file, bool showString) {
+    FILE *fp;
+
 
     if ((fp = fopen(file, "wt")) == NULL) {
         fprintf(stderr, "can't create patch file %s\n", file);
         return;
     }
+    genPatch(fp, CHANGE, "; PATCHES", showString);
+    genPatch(fp, DELETE, "; DELETIONS", showString);
+    genPatch(fp, INIT, "; UNINITALISED RANDOM DATA", showString);
+    genPatch(fp, APPEND, "APPEND", showString);
 
-    addr = low;
-    while (addr < high) {
-        switch (thisUse = use[addr]) {
-        case SKIP:
-        case UNUSED:
-            if (col && prevUse != SKIP && prevUse != UNUSED) {
-                putc('\n', fp);
-                col = 0;
-            }
-            runlen = typeRunLen(addr);
-            break;
-        case CHANGE:
-        case DELETE:
-            if (col && prevUse != CHANGE && prevUse != DELETE) {
-                putc('\n', fp);
-                col = 0;
-            }
-
-            if (col == 0)
-                col += fprintf(fp, "%04X", addr);
-            runlen = thisUse == CHANGE ? valRunLen(addr) : typeRunLen(addr);
-            if (thisUse == CHANGE) {
-                if (runlen >= MINRUN)
-                    col += fprintf(fp, " %02X x %02X", mem[addr], runlen);
-                else
-                    col += fprintf(fp, " %02X", mem[addr]);
-            } else if (runlen >= MINRUN)
-                col += fprintf(fp, " - x %02X", runlen);
-            else
-               col += fprintf(fp, " -");
-
-            break;
-        case APPEND:
-            if (prevUse != APPEND) {
-                if (col)
-                    fputc('\n', fp);
-                fprintf(fp, "APPEND\n");
-                col = 0;
-            }
-            if (col) {
-                fputc(' ', fp);
-                col++;
-            }
-
-            runlen = valRunLen(addr);
-            if (runlen >= MINRUN)
-                col += fprintf(fp, "%02X x %02X", mem[addr], runlen);
-            else
-                col += fprintf(fp, "%02X", mem[addr]);
-
-            break;
-        }
-        if (col > MAXCOL) {
-            fputc('\n', fp);
-            col = 0;
-        }
-        prevUse = thisUse;
-        addr += runlen < MINRUN ? 1 : runlen;
-    }
-    if (col)
-        fputc('\n', fp);
     fclose(fp);
 }
 
@@ -328,5 +335,5 @@ int main(int argc, char **argv) {
         exit(1);
     }
     if (loadObj(argv[1]) && loadBin(argv[2], intelBin, defaultZero))
-        genPatch(argv[3], showString);
+        genPatchFile(argv[3], showString);
 }
