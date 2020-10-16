@@ -108,9 +108,12 @@ This utility is designed to support the creation of .COM, .T0 and .BIN files and
 2. It is possible that the binary images have data after the end of the program to align with sector boundaries, The patch capability allows this to be added at the end of the file.
 
 ```
-Usage: obj2bin -v | -V |  [-i] infile [patchfile] outfile
+Usage: obj2bin -v | -V |  [-i | -j] infile [patchfile] outfile
 Where -v/-V provide version information
-and   -i    produces Intel formast .BIN files
+      -i    produces Intel formast .BIN files
+      -j    writes a jmp to entry at the start of file using
+            any initial lxi sp, is skipped.
+            the first byte must either uninitalised or a jmp (0c3h)
 
 The patch file, if used  has the following format and operates in one of two modes
 PATCH the initial mode and APPEND which starts after the key word APPEND is seen
@@ -212,6 +215,6 @@ usage: version [-h] | [-q] [-f] [-a appid] [CACHE_PATH OUT_FILE]
 ------
 
 ```
-Updated by Mark Ogden 11-Oct-2020 
+Updated by Mark Ogden 16-Oct-2020 
 ```
 
