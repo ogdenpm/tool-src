@@ -196,15 +196,15 @@ bool fputblock(FILE *fp, unsigned low, unsigned high, bool intelBin) {
 void insertJmpEntry() {
     unsigned loc;
 
-    loc = use[low] == DATA && mem[low] == 0x31 && use[low + 1] && use[low + 2] ? 3 : 0;
+    loc = use[low] == DATA && mem[low] == 0x31 && use[low + 1] && use[low + 2] ? low + 3 : low;
 
     if (use[loc] == DATA && mem[loc] != 0xc3) {
         fprintf(stderr, "Failed prechecks: Skipping writing jmp to entry\n");
         return;
     }
-    mem[loc] = 0xc3; mem[loc++] = DATA;
-    mem[loc] = start % 256; mem[loc++] = DATA;
-    mem[loc] = start / 256; mem[loc] = DATA;
+    mem[loc] = 0xc3; use[loc++] = DATA;
+    mem[loc] = start % 256; use[loc++] = DATA;
+    mem[loc] = start / 256; use[loc] = DATA;
     if (loc > high)
         high = loc;
 }
