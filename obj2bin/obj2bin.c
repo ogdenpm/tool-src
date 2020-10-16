@@ -105,6 +105,7 @@ unsigned int high = 0;
 void loadfile(char *s);
 int dumpfile(char *s, bool intelBin);
 void patchfile(char *s);
+void insertJmpEntry();
 
 
 __declspec(noreturn) void usage(char *fmt, ...) {
@@ -115,9 +116,12 @@ __declspec(noreturn) void usage(char *fmt, ...) {
         vfprintf(stderr, fmt, args);
         va_end(args);
     }
-    fprintf(stderr, "\nUsage: %s -v | -V |  [-i] infile [patchfile] outfile\n"
+    fprintf(stderr, "\nUsage: %s [-v | -V]   [-i | -j] infile [patchfile] outfile\n"
                       "Where -v/-V provide version information\n"
-                      "and   -i    produces Intel bin files\n", invokedBy);
+                      "      -i    produces Intel bin files\n"
+                      "      -j    writes a jmp to entry at the start of file using\n"
+                      "            any initial lxi sp, is skipped.\n"
+                      "            the first byte must either uninitalised or a jmp (0c3h)\n", invokedBy);
 
     exit(1);
 }
@@ -128,23 +132,38 @@ __declspec(noreturn) void usage(char *fmt, ...) {
 int main(int argc, char **argv)
 {
     bool intelBin = false;
+    bool writeEntry = false;
+
     invokedBy = argv[0];
 
     if (argc == 2 && _stricmp(argv[1], "-v") == 0) {
         showVersion(stdout, argv[1][1] == 'V');
         exit(0);
     }
-    if (argc >= 2 && _stricmp(argv[1], "-i") == 0) {
-        intelBin = true;
+    while (argc >= 2 && argv[1][0] == '-') {
+        if (_stricmp(argv[1], "-i") == 0)
+            intelBin = true;
+        else if (_stricmp(argv[1], "-j") == 0)
+            writeEntry = true;
+        else
+            usage("Unknown option %s\n", argv[1]);
         argc--;
         argv++;
     }
+
+
     if (argc < 3 || argc > 4)
         usage(NULL);
 
     loadfile(argv[1]);
+    if (writeEntry)
+        if (!intelBin)
+            insertJmpEntry();
+        else
+            fprintf(stderr, "Skipping -j option as not needed for Intel binary\n");
     if (argc == 4)
         patchfile(argv[2]);
+
     return dumpfile(argv[argc - 1], intelBin);
 }
 
@@ -173,6 +192,22 @@ bool fputblock(FILE *fp, unsigned low, unsigned high, bool intelBin) {
     return fwrite(&mem[low], 1, high - low, fp) == high - low;
 }
 
+
+void insertJmpEntry() {
+    unsigned loc;
+
+    loc = use[low] == DATA && mem[low] == 0x31 && use[low + 1] && use[low + 2] ? 3 : 0;
+
+    if (use[loc] == DATA && mem[loc] != 0xc3) {
+        fprintf(stderr, "Failed prechecks: Skipping writing jmp to entry\n");
+        return;
+    }
+    mem[loc] = 0xc3; mem[loc++] = DATA;
+    mem[loc] = start % 256; mem[loc++] = DATA;
+    mem[loc] = start / 256; mem[loc] = DATA;
+    if (loc > high)
+        high = loc;
+}
 
 int dumpfile(char *file, bool intelBin)
 {
