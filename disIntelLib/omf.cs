@@ -21,9 +21,6 @@
  ****************************************************************************/
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.IO;
 namespace disIntelLib
 {
@@ -72,7 +69,7 @@ namespace disIntelLib
             if (cur + 1 >= next - 1)
                 return -1;
             cur += 2;
-            return  bytes[cur - 1] * 256 + bytes[cur - 2];
+            return bytes[cur - 1] * 256 + bytes[cur - 2];
         }
 
         public int getLen() => next - start - 3;

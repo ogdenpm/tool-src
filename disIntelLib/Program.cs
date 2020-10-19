@@ -20,14 +20,10 @@
  *                                                                          *
  ****************************************************************************/
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.IO;
-using System.Security.Cryptography.X509Certificates;
-using System.Reflection;
 using GitVersionInfo;
+using System;
+using System.IO;
+using System.Text;
 
 namespace disIntelLib
 {
@@ -38,7 +34,7 @@ namespace disIntelLib
         static Image image { get; set; }
         static int t6seg { get; set; }
 
-        
+
         static int Main(string[] args)
         {
 
@@ -54,7 +50,7 @@ namespace disIntelLib
                 return 0;
             }
 
-                
+
             try
             {
                 omf = new Omf(args[0]);
@@ -62,17 +58,17 @@ namespace disIntelLib
                 if (!Directory.Exists(basedir))
                     Directory.CreateDirectory(basedir);
                 decodeOMF(basedir);
-                
-             }
+
+            }
             catch (Exception e)
             {
                 Console.Error.WriteLine(e.Message);
                 return 1;
             }
 
-  
-          
- //          Console.ReadLine();
+
+
+            //          Console.ReadLine();
             return 0;
         }
 
@@ -82,56 +78,57 @@ namespace disIntelLib
             Console.OutputEncoding = Encoding.ASCII;
             TextWriter sw = Console.Out;
             int compiler = 0;
- 
+
 
             while ((type = omf.nextRec()) >= 0)
             {
-                switch (type) {
-                case 2:
+                switch (type)
+                {
+                    case 2:
                         sw.Close();
                         string modname = omf.iname();
                         compiler = omf.ibyte();
                         sw = new StreamWriter(Path.ChangeExtension(Path.Combine(basedir, modname), compiler == 1 ? ".plm" :
                             compiler == 2 ? ".for" : ".asm"), false, Encoding.ASCII);
                         sw.WriteLine("{0}: DO;", modname);
-                        dump2(sw, compiler);  break;
-                case 4:
-                    dump4(sw, compiler); break;
-                case 6:
-                    dump6(sw); break;
-                case 8:
-                    dump8(sw); break;
-                //case 0xe:
-                //    sw.WriteLine("ENDLIB:\n");
-                //    break;
-                case 0x12:
-                    dump12_16(sw, type);
-                    break;
-                case 0x16:
-                    dump12_16(sw, type);
-                    break;
-                case 0x18:
-                    dump18(sw, compiler);break;
-                case 0x20:
-                    dump20(sw); break;
-                case 0x22:
-                    dump22_24(sw, type); break;
-                case 0x24:
-                    dump22_24(sw, type); break;
-                //case 0x26:
-                //    dump26(fpout); break;
-                //case 0x28:
-                //    dump28(fpout); break;
-                //case 0x2a:
-                //    dump2a(fpout); break;
-                //case 0x2c:
-                //    dump2c(fpout); break;
-                //case 0x2e:
-                //    dump2e(fpout); break;
-                //default:
-                //    sw.WriteLine("skip: type {0:X2}, length {1}", type, omf.getLen());
-                //    // dumpUndef(fpout, reclen, 0, 0);
-                //    break;
+                        dump2(sw, compiler); break;
+                    case 4:
+                        dump4(sw, compiler); break;
+                    case 6:
+                        dump6(sw); break;
+                    case 8:
+                        dump8(sw); break;
+                    //case 0xe:
+                    //    sw.WriteLine("ENDLIB:\n");
+                    //    break;
+                    case 0x12:
+                        dump12_16(sw, type);
+                        break;
+                    case 0x16:
+                        dump12_16(sw, type);
+                        break;
+                    case 0x18:
+                        dump18(sw, compiler); break;
+                    case 0x20:
+                        dump20(sw); break;
+                    case 0x22:
+                        dump22_24(sw, type); break;
+                    case 0x24:
+                        dump22_24(sw, type); break;
+                        //case 0x26:
+                        //    dump26(fpout); break;
+                        //case 0x28:
+                        //    dump28(fpout); break;
+                        //case 0x2a:
+                        //    dump2a(fpout); break;
+                        //case 0x2c:
+                        //    dump2c(fpout); break;
+                        //case 0x2e:
+                        //    dump2e(fpout); break;
+                        //default:
+                        //    sw.WriteLine("skip: type {0:X2}, length {1}", type, omf.getLen());
+                        //    // dumpUndef(fpout, reclen, 0, 0);
+                        //    break;
                 }
             }
             sw.Close();
@@ -142,7 +139,7 @@ namespace disIntelLib
             int clen, dlen;
             int version;
 
- 
+
             switch (compiler)
             {
                 case 0: sw.Write("; ASM80,"); break;
@@ -242,7 +239,7 @@ namespace disIntelLib
             {
                 addr = omf.iword();
                 image.addExternal(t6seg, addr, symid);
-    
+
             }
         }
 

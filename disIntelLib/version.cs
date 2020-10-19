@@ -30,7 +30,7 @@ namespace GitVersionInfo
         {
             Console.Write($"{GIT_APPNAME} {GIT_VERSION}");
 #if DEBUG
-                Console.Write(" {debug}");
+            Console.Write(" {debug}");
 #endif
             Console.WriteLine($"  (C){GIT_YEAR} Mark Ogden");
             if (full)
