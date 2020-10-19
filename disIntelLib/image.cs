@@ -27,7 +27,7 @@ using System.IO;
 namespace disIntelLib
 {
     [FlagsAttribute]
-    enum Usage { Used = 1, Word = 2, Code = 4, Data = 8};
+    enum Usage { Used = 1, Word = 2, Code = 4, Data = 8 };
 
     class loc
     {
@@ -63,8 +63,9 @@ namespace disIntelLib
 
         public Image(int csize, int dsize)
         {
-            code = new loc [csize];
-            for(int i = 0; i < csize; i++) {
+            code = new loc[csize];
+            for (int i = 0; i < csize; i++)
+            {
                 code[i] = new loc();
             }
 
@@ -122,7 +123,7 @@ namespace disIntelLib
             if (cloc == null || addr >= cloc.Length)
                 equ.Add(string.Format("{0}\tequ\t{1}\t;{2}{3}", name, hexify(addr), Omf.segStr(segid), isPublic ? " public" : ""));
             else if (cloc[addr].label == null || cloc[addr].label[1] == '$')    /* new or overwrite of local L$ D$ label */
-                cloc[addr].label = name + (isPublic ? ":\t; public": ":");
+                cloc[addr].label = name + (isPublic ? ":\t; public" : ":");
             else
                 cloc[addr].label += "\r\n" + name + (isPublic ? ":\t; public" : ":");
             if (cloc == code)
@@ -226,7 +227,7 @@ namespace disIntelLib
                             sw.WriteLine(compiler == 1 ? "\tADDRESS INITIAL({0})" : "\tdw {0}", dwVal);
                         else
                             sw.WriteLine(compiler == 1 ? "\tBYTE(*) INITIAL({0}{1})" : "\tdb {0}{1}", db, inString ? "'" : "");
-                        
+
                         db = "";
                         inString = false;
                         dbcnt = 0;
@@ -264,7 +265,7 @@ namespace disIntelLib
                         if (dscnt != 0)
                         {
                             if (dscnt == 2)
-                                sw.WriteLine(compiler == 1 ?"\tADDRESS" : "\tds 2");
+                                sw.WriteLine(compiler == 1 ? "\tADDRESS" : "\tds 2");
                             else
                                 sw.WriteLine(compiler == 1 ? "\tBYTE({0})" : "\tds {0}", dscnt);
                             dscnt = 0;
@@ -320,7 +321,7 @@ namespace disIntelLib
                         if (dscnt == 2)
                             sw.WriteLine(compiler == 1 ? "\tADDRESS" : "\tds 2");
                         else
-                            sw.WriteLine(compiler == 1 ? "\tBYTE({0})" :"\tds {0}", dscnt);
+                            sw.WriteLine(compiler == 1 ? "\tBYTE({0})" : "\tds {0}", dscnt);
                         dscnt = 0;
                     }
                     if ((usage & Usage.Code) == 0)                   // must be a word
@@ -408,7 +409,7 @@ namespace disIntelLib
 
         public void markCode()
         {
-            while(codept.Count > 0)
+            while (codept.Count > 0)
             {
                 int start = codept.Dequeue();
                 if (start >= code.Length)           // safety check
@@ -433,9 +434,9 @@ namespace disIntelLib
                     int mem = code[addr].mem;
 
                     int len = disasm.ilen(mem);
-                    more = ! disasm.isBreak(mem);    // terminating instruction
-                    if (disasm.isCodeRef(mem) && code[addr+1].ftype == 3 && code[addr + 1].fseg == 1)
-                        coderefs.Add(code[addr+1].mem + code[addr+2].mem * 256);
+                    more = !disasm.isBreak(mem);    // terminating instruction
+                    if (disasm.isCodeRef(mem) && code[addr + 1].ftype == 3 && code[addr + 1].fseg == 1)
+                        coderefs.Add(code[addr + 1].mem + code[addr + 2].mem * 256);
                     for (int i = 0; i < len; i++, addr++)
                     {
                         if ((code[addr].usage & Usage.Code) != 0)
@@ -464,6 +465,6 @@ namespace disIntelLib
 
     }
 
- 
+
 
 }

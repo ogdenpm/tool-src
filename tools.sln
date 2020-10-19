@@ -23,7 +23,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dumpintel", "dumpintel\dump
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "genpatch", "genpatch\genpatch.vcxproj", "{EFE3760D-27BB-46FF-AEDB-28EBAE367EAE}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "disIntelLib", "disIntelLib\disIntelLib.csproj", "{AB4BFDCE-96B3-4B88-B5EE-4DF179B545A3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "disIntelLib", "disIntelLib\disIntelLib.csproj", "{AB4BFDCE-96B3-4B88-B5EE-4DF179B545A3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
