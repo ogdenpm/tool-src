@@ -156,6 +156,9 @@ bool parseUpdateIndex(uint8_t const **ps, char *str) {
             }
             Log("Error: Illegal Index Assignment /%u/ %s\n", insert, str);
             return false;
+        } else if (omfVer == OMF51 && insert == 0) {
+            *ps = s;
+            return true;
         } else if (omfVer == OMF86)
             chkFullSegName(pIndex, str);
     }
