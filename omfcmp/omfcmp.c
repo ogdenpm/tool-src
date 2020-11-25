@@ -103,6 +103,9 @@ typedef struct {
     extern_t externals;
     byte maxSeg;
     seg_t segs[256];
+    byte modType;
+    byte startSeg;
+    word startOffset;
 } module_t;
 
 
@@ -256,6 +259,13 @@ void modhdr(omf_t *omf, module_t *mod)
     }
 }
 
+void modend(omf_t *omf, module_t *mod) {
+    mod->modType = getByte(omf);
+    mod->startSeg = getByte(omf);
+    mod->startOffset = getWord(omf);
+}
+
+
 void content(omf_t *omf, module_t *mod)
 {
     seg_t *seg;
@@ -365,6 +375,9 @@ module_t *newModule(omf_t *omf)
             modhdr(omf, mod);
             break;
         case MODEND:
+            modend(omf, mod);
+            break;
+        case EOFREC:
             return mod;
         case CONTENT:
             content(omf, mod);
@@ -783,7 +796,20 @@ int diffModule(module_t *lm, module_t *rm)
 
     if (!diffExternals(lm, rm, result))
         result = 0;
-
+    if (lm->modType != rm->modType || lm->startSeg != rm->startSeg || lm->startOffset != rm->startOffset) {
+        if (result)
+            putchar('\n');
+        printf("Starts differ - ");
+        if (lm->modType)
+            printf("%.*s:%04X : ", lm->segs[lm->startSeg].name[0], lm->segs[lm->startSeg].name + 1, lm->startOffset);
+        else
+            printf("Not main : ");
+        if (rm->modType)
+            printf("%.*s:%04X\n", rm->segs[rm->startSeg].name[0], rm->segs[rm->startSeg].name + 1, rm->startOffset);
+        else
+            printf("Not main\n");
+        result = 0;
+    }
     return result;
 
 }
