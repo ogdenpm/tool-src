@@ -651,12 +651,12 @@ int main(int argc, char **argv) {
     int i;
     for (i = 0; i < 20; i++) {
         sprintf(tmpFile, "tmp%06d", i);
-        if (_access(tmpFile, 0) != 0)
+        if (fpout = fopen((const char *)tmpFile, "wbx"))
             break;
     }
 
-    if (i == 20 || (fpout = fopen(tmpFile, "wb")) == NULL) {
-        fprintf(stderr, "can't create tmpFile\n");
+    if (!fpout) {
+        fprintf(stderr, "can't create tmpFile %s\n", tmpFile);
         fclose(fpin);
         exit(1);
     }
