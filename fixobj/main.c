@@ -145,7 +145,7 @@ void usage() {
         "                      omitting newname deletes, only vaild for public\n"
         "                      valid chars are ?@A-Z0-9 and length < 32\n"
         "s addr*               force split in record at absolute addr\n"
-        " the normal options (except -v/-V can also be used with out leading -\n"
+        "the command line options withoug leading - can also be used\n"
         "text from # onwards is treated as a comment and blank lines are skipped\n"
         "\n"
         "WARNING: When patching CSEG, relocation records are not modified\n"
