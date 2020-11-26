@@ -236,8 +236,10 @@ bool parsePatchFile(char *file, option_t *options) {
         const char *s = skipBlank(line);
         const char *errMsg;
 
-        if (checkEOL(s))
+        if (checkEOL(s)) {
+            ok = true;
             continue;
+        }
         switch (tolower(*s++)) {
         case 'l': ok = options->lflag = true; errMsg = "l option"; break;
         case 'm': ok = options->nflag = true; errMsg = "m option"; break;
