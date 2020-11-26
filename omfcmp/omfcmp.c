@@ -376,6 +376,7 @@ module_t *newModule(omf_t *omf)
             break;
         case MODEND:
             modend(omf, mod);
+            return mod;
             break;
         case EOFREC:
             return mod;
@@ -784,12 +785,18 @@ int diffModule(module_t *lm, module_t *rm)
                 result = 0;
         }
     }
-    for (j = 0; j <= rm->maxSeg; j++)
+    for (j = 1; j <= rm->maxSeg; j++)
         if (rm->segs[i].status && (rm->segs[j].status & CHECKED) == 0) {
+            putchar('\n');
             printPstrPair("\x06------", rm->segs[j].name);
-            printf(" - Segment missing\n");
-            rm->segs[j].status |= ERROR + CHECKED;
-            result = 0;
+            printf(" - Segment missing");
+            if (j == 4 && rm->segs[j].length == 0) {
+                printf(" - benign as length 0");
+                rm->segs[j].status |= CHECKED;
+            } else {
+                rm->segs[j].status |= ERROR + CHECKED;
+                result = 0;
+            }
         }
 
 
@@ -800,15 +807,16 @@ int diffModule(module_t *lm, module_t *rm)
         if (result)
             putchar('\n');
         printf("Starts differ - ");
-        if (lm->modType)
-            printf("%.*s:%04X : ", lm->segs[lm->startSeg].name[0], lm->segs[lm->startSeg].name + 1, lm->startOffset);
-        else
-            printf("Not main : ");
-        if (rm->modType)
-            printf("%.*s:%04X\n", rm->segs[rm->startSeg].name[0], rm->segs[rm->startSeg].name + 1, rm->startOffset);
-        else
-            printf("Not main\n");
-        result = 0;
+        printf("%s", lm->modType ? "Main" : "Non main");
+        if (lm->modType || lm->startSeg || lm->startOffset)
+            printf(" %.*s:%04X", lm->segs[lm->startSeg].name[0], lm->segs[lm->startSeg].name + 1, lm->startOffset);
+        printf(" : %s", rm->modType ? "Main" : "Non main");
+        if (rm->modType || rm->startSeg || rm->startOffset)
+            printf(" %.*s:%04X", rm->segs[rm->startSeg].name[0], rm->segs[rm->startSeg].name + 1, rm->startOffset);
+        if (lm->modType == 0 && (lm->startSeg || lm->startOffset) || rm->modType == 0 && (rm->startSeg || rm->startOffset))
+            printf(" - benign non compliance");
+        if (lm->modType != rm->modType || (lm->modType == 1 && lm->startSeg != rm->startSeg && lm->startOffset != rm->startOffset))
+            result = 0;
     }
     return result;
 
