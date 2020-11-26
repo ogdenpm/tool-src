@@ -66,7 +66,8 @@ typedef struct {
     int trn;
     int ver;
     bool lflag;
-    bool mflag;
+    bool nflag;
+    bool hflag;
     struct {
         int cnt;
         patch_t *patchList;
@@ -79,6 +80,7 @@ typedef struct {
         int cnt;
         uint16_t *locs;
     } splits;
+    unsigned entry;
     const char *infile;
     const char *outfile;
 } option_t;
@@ -119,28 +121,31 @@ void addSplit(uint16_t loc, option_t *options) {
 
 
 void usage() {
-    printf("Usage: %s [-(v|V)] |  [-l] [-m] [-p file] [-t(f|p|u)]  [-v hh] infile [outfile]\n"
+    printf("Usage: %s [-(v|V)] | [-h] [-l] [-n] [-p file]* [-t(f|p|u)]  [-v hh] infile outfile\n"
         "Where:\n"
         "  -v | -V     shows version information - must be only option\n"
+        "  -h          create missing segdefs in MODHDR for CODE..MEMORY\n"
         "  -l          remove @Pnnnn library references\n"
-        "  -m          clear the main module flag\n"
+        "  -n          mark as a non main module\n"
         "  -p file     parses the file for patch information. See below\n"
         "  -tf         sets translator to FORT80\n"
         "  -tp         sets translator to PLM80\n"
         "  -tu         sets translator to Unspecified/ASM80\n"
         "  -v hh       sets version to hh hex value\n"
-        "  outfile     optional output file, default is to replace infile\n"
+        "  outfile     outfile can be the same as infile to do inplace edits\n"
        "\n"
         ""
         "Using the -p option supports more advanced patching\n"
         "the file can contain multiple instances of the following line types\n"
+        "n [(a|c) addr]        non main module with optional non compliant entry point\n"
         "p addr [val]*         patch from addr onwards with the given hex values\n"
         "                      addr is absolute for apps, else code relative\n"
         "r oldname [newname]   renames public/external symbols from oldname to newname\n"
         "                      names are converted to uppercase and $ is ignored\n"
         "                      omitting newname deletes, only vaild for public\n"
         "                      valid chars are ?@A-Z0-9 and length < 32\n"
-        "s addr                force split in record at absolute addr\n"
+        "s addr*               force split in record at absolute addr\n"
+        " the normal options (except -v/-V can also be used with out leading -\n"
         "text from # onwards is treated as a comment and blank lines are skipped\n"
         "\n"
         "WARNING: When patching CSEG, relocation records are not modified\n"
@@ -193,34 +198,29 @@ const char *parseName(const char **src) {
     return _strdup(name);
 }
 
+// parse a number, updates s to point to breaking char if parses is ok
+// returns +v if ok, else -1 indicates no number
+int parseHexNumber(const char **ps, bool bval) {
+    const char *s = skipBlank(*ps);
 
-bool parsePatch(const char *s, option_t *options) {
-    s = skipBlank(s);
-    char *end;
-
-    unsigned long loc;
-    unsigned long val;
-    if (!isxdigit(*s))
-        return false;
-    loc = strtoul(s, &end, 16);
-    if (loc > 0xffff)
-        return false;
-
-    while (1) {
-        s = skipBlank(end);
-        if (*s == '\n' || *s == '#')
-            return true;
-        val = strtoul(s, &end, 16);
-        if (s == end || val > 255 || !isxdigit(*s))
-            return false;
-        addPatch((uint16_t)loc++, (uint8_t)val, options);
+    if (!isxdigit(*s)) {
+        *ps = s;
+        return -1;
     }
+    return (int)strtol(s, (char **)ps, 16);
+}
+
+bool checkEOL(const char *s) {
+    s = skipBlank(s);
+    return *s == '\n' || *s == '#';
 }
 
 bool parsePatchFile(char *file, option_t *options) {
     char line[257];
     const char *oldname, *newname;
-    unsigned long loc;
+    int loc;
+    int val;
+
     FILE *fp = fopen(file, "rt");
     if (fp == NULL) {
         fprintf(stderr, "Cannot open patch file %s\n", file);
@@ -234,31 +234,74 @@ bool parsePatchFile(char *file, option_t *options) {
             break;
         }
         const char *s = skipBlank(line);
-        if (tolower(*s) == 'r') {
-            s++;
+        const char *errMsg;
+
+        if (checkEOL(s))
+            continue;
+        switch (tolower(*s++)) {
+        case 'l': ok = options->lflag = true; errMsg = "l option"; break;
+        case 'm': ok = options->nflag = true; errMsg = "m option"; break;
+        case 'h': ok = options->hflag = true; errMsg = "h option"; break;
+        case 't':
+            ok = checkEOL(s + 1);
+            switch (*s++) {
+            case 'u': options->trn = 0; break;
+            case 'p': options->trn = 1; break;
+            case 'f': options->trn = 2; break;
+            default:
+                ok = false;
+            }
+            errMsg = "trn option";
+            break;
+        case 'n':
+            s = skipBlank(s);
+            ok = options->nflag = true;
+            if (tolower(*s) == 'a' || tolower(*s) == 'c') {
+                options->entry = tolower(*s++) == 'a' ? 0 : 0x10000;
+                if ((loc = parseHexNumber(&s, false)) >= 0)
+                    options->entry += loc;
+                else
+                    ok = false;
+            } else
+                options->entry = 0;
+
+            errMsg = "end patch";
+            break;
+        case 'v':
+            ok = (options->ver = parseHexNumber(&s, true)) >= 0;
+            errMsg = "v option";
+            break;
+        case 'r':
             oldname = parseName(&s);
             newname = parseName(&s);
             s = skipBlank(s);
-            if (*oldname == 0 || (*s != '\n' && *s != '#'))
-                fprintf(stderr, "Invalid rename line: %s\n", line);
-            else {
+            if (*oldname && checkEOL(s)) {
                 addRename(oldname, newname, options);
                 ok = true;
             }
-        } else if (tolower(*s) == 'p') {
-            if (!(ok = parsePatch(s + 1, options)))
-                fprintf(stderr, "Invalid patch line: %s", line);
-        } else if (tolower(*s) == 's') {
-            char *end;
-            s = skipBlank(s + 1);
-            if (!isxdigit(*s) || (loc = strtoul(s, &end, 16)) > 0xffff || (*(s = skipBlank(end)) != '\n' && *s != '#'))
-                fprintf(stderr, "Invalid split line: %s", line);
-            else {
-                addSplit((uint16_t)loc, options);
-                ok = true;
+            errMsg = "rename";
+            break;
+        case 'p':
+            if ((loc = parseHexNumber(&s, false)) >= 0) {
+                while ((val = parseHexNumber(&s, true)) >= 0)
+                    addPatch((uint16_t)loc++, (uint8_t)val, options);
+                ok = checkEOL(s);
             }
-        } else if (*s != '\n' && *s != '#')         // blank line and # lines are ok
-            fprintf(stderr, "Unknown advanced option %s\n", s);
+            errMsg = "patch";
+            break;
+        case 's':
+            while ((loc = parseHexNumber(&s, false)) >= 0) {
+                ok = true;
+                addSplit((uint16_t)loc, options);
+            }
+            errMsg = "split";
+            break;
+        default:
+            errMsg = "option";
+            break;
+        }
+        if (!ok || !(ok = checkEOL(s)))
+            fprintf(stderr, "Invalid %s line: %s", errMsg, line);
     }
     fclose(fp);
     return ok;
@@ -389,26 +432,50 @@ bool appendItem(FILE *fpout, uint8_t *recBuf, uint8_t *item, uint16_t ilen, uint
 }
 
 
+bool rewriteModhdr(FILE *fpout, uint8_t *recBuf, int repCnt, const option_t *options) {
+    int dataIdx = recBuf[3] + 4; // skip name
 
-bool rewriteModhdr(FILE *fpout, uint8_t *recBuf, const option_t *options) {
-    int trnIdx = recBuf[3] + 4; // skip name
-    int verIdx = trnIdx + 1;
-
-    if (recBuf[trnIdx] > 2) {
+    if (recBuf[dataIdx] > 2) {
         fprintf(stderr, "ERROR: not an OMF85 object or executable file\n");
         return false;
     }
     if (options->trn >= 0)
-        recBuf[trnIdx] = options->trn;
+        recBuf[dataIdx] = options->trn;
     if (options->ver >= 0)
-        recBuf[verIdx] = options->ver;
-
+        recBuf[dataIdx + 1] = options->ver;
+    if (options->hflag && repCnt) {
+        uint16_t segLocs[5];       // gives where std segs end when indexed by segid
+        memset(segLocs, 0, sizeof(segLocs));
+        segLocs[0] = dataIdx += 2;  // where to insert CODE seg if missing
+        while (repCnt-- >= 0) {
+            if (recBuf[dataIdx] <= 4)
+                segLocs[recBuf[dataIdx]] = dataIdx + 4;    // where to insert next seg if missing
+            dataIdx += 4;
+        }
+        for (int i = 1; i <= 4; i++) {
+            if (segLocs[i] == 0) {      // insert missing info
+                int eIdx = getRecLen(recBuf) + 3;
+                dataIdx = segLocs[i - 1];
+                if (dataIdx + 1 != eIdx)
+                    memmove(recBuf + dataIdx + 4, recBuf + dataIdx, eIdx - dataIdx);    // make hole for new info
+                recBuf[dataIdx] = i;                                // segid
+                recBuf[dataIdx + 1] = recBuf[dataIdx + 2] = 0;      // offset
+                recBuf[dataIdx + 3] = 3;                            // align byte
+                setRecLen(recBuf, getRecLen(recBuf) + 4);
+                segLocs[i] = dataIdx + 4;
+            }
+        }
+    }
     return writeRecord(fpout, recBuf, 0);
 }
 
 bool rewriteModend(FILE *fpout, uint8_t *recBuf, const option_t *options) {
-    if (options->mflag)
-        memset(recBuf + 3, 0, 4);               // clear mod type, seg & offset
+    if (options->nflag) {
+        recBuf[3] = 0;          // set non main
+        recBuf[4] = options->entry / 0x10000;   // set entry information - default is compliant 0s
+        recBuf[5] = options->entry % 256;       // e option in patch file allows this to be overwritten
+        recBuf[6] = options->entry / 256;
+    }
     return writeRecord(fpout, recBuf, 0);
 }
 
@@ -537,7 +604,7 @@ bool rewriteObj(FILE *fpin, FILE *fpout, const option_t *options) {
                 return ok;
             break;
         case MODHDR:
-            ok = rewriteModhdr(fpout, recBuf, options);
+            ok = rewriteModhdr(fpout, recBuf, repCnt, options);
             addrSeg = repCnt != 0;      // ABS if no seg info, else CODE
             break;
         case MODEND:
@@ -572,11 +639,14 @@ bool parseOptions(int argc, char **argv, option_t *options) {
             case 'l':
                 options->lflag = true;
                 break;
-            case 'm':
-                options->mflag = true;
+            case 'n':
+                options->nflag = true;
+                break;
+            case 'h':
+                options->hflag = true;
                 break;
             case 't':
-                switch (*s++) {
+                switch (*++s) {
                 case 'u': options->trn = 0; break;
                 case 'p': options->trn = 1; break;
                 case 'f': options->trn = 2; break;
@@ -593,7 +663,7 @@ bool parseOptions(int argc, char **argv, option_t *options) {
                     }
                     s = (++argv)[1];
                 }
-                if (sscanf(s, "%X", &options->ver) != 1 || options->ver > 0xff) {
+                if ((options->ver = parseHexNumber(&s, true)) < 0 || *s != 0) {
                     fprintf(stderr, "Bad value %s for -v option\n", s);
                     return false;
                 }
@@ -618,10 +688,10 @@ bool parseOptions(int argc, char **argv, option_t *options) {
         }
     }
 
-    if (argc != 2 && argc != 3)
+    if (argc != 3)
         return false;
     options->infile = argv[1];
-    options->outfile = argc == 2 ? argv[1] : argv[2];
+    options->outfile = argv[2];
     return true;
 }
 
@@ -651,7 +721,7 @@ int main(int argc, char **argv) {
     int i;
     for (i = 0; i < 20; i++) {
         sprintf(tmpFile, "tmp%06d", i);
-        if (fpout = fopen((const char *)tmpFile, "wbx"))
+        if ((fpout = fopen((const char *)tmpFile, "wbx")) != NULL)
             break;
     }
 
