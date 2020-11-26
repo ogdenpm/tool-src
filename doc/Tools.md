@@ -1,4 +1,4 @@
-# Reverse engineering tools
+# **Reverse** engineering tools
 
 The notes below document the tools I have developed for reverse engineering.
 
@@ -42,20 +42,22 @@ usage: dumpintel -v | -V | objfile [outputfile]
 Supports modifying omf85 files to work around lack of historic / unreleased compilers that are currently not available.
 
 ```
-Usage: fixobj [-(v|V)] |  [-l] [-m] [-p file] [-t(f|p|u)]  [-v hh] infile [outfile]
+Usage: fixobj [-(v|V)] |  [-h] [-l] [-n] [-p file] [-t(f|p|u)]  [-v hh] infile outfile
 Where:
   -v | -V     shows version information - must be only option
+  -h	      create missing segdefs in MODHDR for CODE..MEMORY
   -l          remove @Pnnnn library references
-  -m          clear the main module flag
+  -n          mark as a non main module
   -p file     parses the file for patch information. See below
   -tf         sets translator to FORT80
   -tp         sets translator to PLM80
   -tu         sets translator to Unspecified/ASM80
   -v hh       sets version to hh hex value
- outfile      optional output file, default is to replace infile
+ outfile      outfile can be the same as infile to do inplace edits
 
 Using the -p option supports more advanced patching
 the file can contain multiple instances of the following line types
+n [(a|c) addr]		  non main module with optional non compliant entry point
 p addr [val]*         patch from addr onwards with the given hex values
                       addr is absolute for apps, else code relative
 r oldname [newname]   renames public/external symbols from oldname to newname
@@ -63,29 +65,39 @@ r oldname [newname]   renames public/external symbols from oldname to newname
                       omitting newname deletes, only vaild for public
                       valid chars are ?@A-Z0-9 and length < 32
 s addr                force split in record at absolute addr
+the command line options with out leading - can also be used
 text from # onwards is treated as a comment and blank lines are skipped
 ```
 
 In addition to the documented options above, all record checksums are recalculated, with previously invalid ones being highlighted.
 
-| Option   | Typical usage                                                |
-| -------- | ------------------------------------------------------------ |
-| **-l**   | This is used to allow PL/M v1.0 behaviour to be synthesised. This older version includes some of the library routines in the object files it creates, which the more recent compilers don't. Although it is possible to link the missing library routines, the public definitions of the plm80.lib routines that this creates causes conflicts when linking. The -l option strips the public definitions out of the  synthesised object module. |
-| **-m**   | Some older applications are composed of separate applications joined together, however the Intel linker objects to linking two or more main modules. In principle converting the files to hex and  joining them would work, this option makes the task simpler by removing the main program flag from the MODEND record. |
-| **-t ?** | These options allow the trn field of the MODHDR record to be set to flag the original file as being PL/M80, FORT80 or ASM80/Unspecified. One use of this is to reset the trn to PL/M80 when the -l option is used, as linking the library routines will reset the trn to ASM80/Unspecified. |
-| **-v**   | This allows the version files of the MODHDR to be forced to a particular value. For example to make it look like the object file has been created by version 1.0 of the PL/M compiler |
+| **Option** | **Typical usage**                                            |
+| ---------- | ------------------------------------------------------------ |
+| **-h**     | Although PL/M emits seg size info in the MODHDR, the linkers omit these if the size is zero. Adding in libraries see below, causes the linker to remove this seg size information. The -h option forces the standard segments CODE, DATA, STACK and MEMORY to be included even if their size is zero. |
+| **-l**     | This is used to allow PL/M v1.0 behaviour to be synthesised. This older version includes some of the library routines in the object files it creates, which the more recent compilers don't. Although it is possible to link the missing library routines, the public definitions of the plm80.lib routines that this creates causes conflicts when linking. The -l option strips the public definitions out of the  synthesised object module. |
+| **-n**     | Some older applications are composed of separate applications joined together, however the Intel linker objects to linking two or more main modules. In principle converting the files to hex and  joining them would work, this option makes the task simpler by removing the main program flag from the MODEND record. See patch file notes for a more advanced version. |
+
+
+
+| Option  | Typical usage                                                |
+| ------- | ------------------------------------------------------------ |
+| **-t?** | These options allow the trn field of the MODHDR record to be set to flag the original file as being PL/M80, FORT80 or ASM80/Unspecified. One use of this is to reset the trn to PL/M80 when the -l option is used, as linking the library routines will reset the trn to ASM80/Unspecified. |
+| **-v**  | This allows the version files of the MODHDR to be forced to a particular value. For example to make it look like the object file has been created by version 1.0 of the PL/M compiler |
 
 #### -p patchfile
 
-The patch file option is used when more complex modifications are needed to make an object file match an original version.
+The patch file option is used when more complex modifications are needed to make an object file match an original version. Multiple -p options are allowed.
 
 | Option | Typical Usage                                                |
 | ------ | ------------------------------------------------------------ |
+| n      | This performs the same basic operation as the -n command line option, however it also allows an entry point to be defined, with a \| c setting the seg id to ABS or CODE respectively and the address being the offset.<br />According to the OMF specification the entry info is ignored for non main modules and should be set to 0, however PLM v1.0 modules does not adhere to this standard, this option allows the PLM v1.0 behaviour to be mimicked. |
 | **p**  | This is used to patch a file in cases where it is not possible to get known compilers to generate the same code.  It only patches defined content and cannot be used to set data or uninitialised areas. Additionally fixup information is not changed, so care is needed when patching non located modules to make sure than only fixed data or offsets are modified. |
 | **r**  | There are two primary uses of this. One is to delete or mask public references in a more targeted manor than the -l option. The second is to rename between ASM80 short names and the compiler long names. |
 | **s**  | Some historic files appear to have splits in longer OMF CONTENT records, possibly due to older linkers or small memory build machines. Although this split has no impact on the loaded image, this option is used to force a split, so that exact binary images can be created. The inverse is not needed as recent versions of link/locate can be used to join records. |
 
 Note the -t, -v and patch file s option are for cosmetic changes, images will be equivalent with or without them.
+
+Note **fixobj** is not able to resolve all differences between old files and those created by more recent tools, it does however allow creation of equivalent files. The key outstanding issue relates to problems when fixing the embedded library code that PLM v1.0 generates. In linking in the library functions, the linker does not emit the records in the same sequence, nor does it create the same the same record splits. Whilst this has no impact on subsequent use, it does mean that the files generated will not be a byte for byte match. The only resolution of this would be to write a bespoke linker.
 
 ### genpatch.exe
 
@@ -98,8 +110,6 @@ where -i	indicates to interpret the bin file as an Intel .BIN file
 	  -z	by default obj2bin auto fills uninitialised data to 0 and the patchfile
 	  		assumes this. The option forces the 0 initialisation to be in patchfile
 ```
-
-<div style="page-break-after: always; break-after: page;"></div>
 
 ### install.cmd (in Scripts directory)
 
@@ -267,6 +277,6 @@ usage: version [-h] | [-q] [-f] [-a appid] [CACHE_PATH OUT_FILE]
 ------
 
 ```
-Updated by Mark Ogden 25-Nov-2020 
+Updated by Mark Ogden 26-Nov-2020 
 ```
 
