@@ -1,6 +1,6 @@
 /****************************************************************************
  *                                                                          *
- *  program: modomf85 - modify omf85 files                                  *
+ *  program: fixobj - modify omf85 files                                    *
  *  Copyright (C) 2020 Mark Ogden <mark.pm.ogden@btinternet.com>            *
  *                                                                          *
  *  This program is free software; you can redistribute it and/or           *
