@@ -51,7 +51,7 @@ uint8_t const *rules85[] =
                             REPTOK "W%eW"     REPSTR  "\f4$2 $1",
 /* 22 */  "\f$P FIXUP($R):"     FIXTOK "B%F"      FIXSTR  " Type $0"
                             REPTOK "W"        REPSTR  "\f8$1",        
-/* 24 */  "\f$P SEGFIX($R):"    FIXTOK "B%sB%A"   FIXSTR  " $0 $1"
+/* 24 */  "\f$P SEGFIX($R):"    FIXTOK "B%sB%F"   FIXSTR  " Seg $0 Type $1"
                             REPTOK "W"        REPSTR  "\f8$2",
 /* 26 */  "\f$P LIBLOC($R):"                      FIXSTR  " Block:Byte"
                             REPTOK "BB"       REPSTR  "\f8$0:$1",
