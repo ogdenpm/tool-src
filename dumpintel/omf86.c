@@ -59,7 +59,7 @@ uint8_t const *rules86[] =
                                           REPTOK "NWI"        REPSTR  "\f2$3 Type: @$4\t14 Name: '$2'",
     /*80*/  "\f$P THEADR($R):"                FIXTOK "N"          FIXSTR " '$0'",
     /*82*/  "\f$P LHEADR($R):"                FIXTOK "N"          FIXSTR " '$0'",
-    /*84*/  "\f$P PEDATA($R):"                FIXTOK "BW"         DMPDAT "$0*16+$1",
+    /*84*/  "\f$P PEDATA($R):"                FIXTOK "WB"         DMPDAT "$0*16+$1",
     /*86*/  "\f$P PIDATA($R):"                FIXTOK "WB"         FIXSTR " $0:$1" DMPIDAT "$0*16+$1",
     /*88*/  "\f$P COMENT($R):"                FIXTOK "BB" IF0("$1=0xa0") "B"END0   FIXSTR " NoPurge=" IF0("$0&0x80") "Yes" ELSE0 "No " END0 " NoList="
                                                                                   IF0("$0&0x40") "Yes" ELSE0 "No " END0 " $C",
@@ -492,7 +492,7 @@ bool parseSegDef86(uint8_t const **ps, var_t *pvar) {
         if (ltldat & 0x80)
             strcat(pvar->sval, " Group");
         if (alignment == 0 || alignment == 5)
-            aSprintf(s, " at %04X:%02X)", frame, offset);
+            aSprintf(s, " @ %04X:%02X ", frame, offset);
         padStr(pvar->sval, 76);
         aSprintf(pvar->sval, "Len: %04X", seglen);
         if (alignment == 6)
