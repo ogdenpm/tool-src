@@ -20,8 +20,9 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{8919B14E-4B86-4EDC-8A9F-0B27D8615000}</ProjectGuid>
-    <RootNamespace>hex2bin</RootNamespace>
+    <RootNamespace>abstool</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>abstool</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -140,8 +141,7 @@ copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO</Command>
     </Link>
     <PreBuildEvent />
     <PostBuildEvent>
-      <Command>if exist $(SolutionDir)install.cfg call $(SolutionDir)Scripts\install.cmd $(TargetPath) $(SolutionDir) &amp;
-copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO</Command>
+      <Command>if exist $(SolutionDir)install.cfg call $(SolutionDir)Scripts\install.cmd $(TargetPath) $(SolutionDir)</Command>
     </PostBuildEvent>
     <CustomBuildStep>
       <Outputs>
@@ -218,7 +218,13 @@ copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO</Command>
     </CustomBuildStep>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="hex2bin.c" />
+    <ClCompile Include="abstool.c" />
+    <ClCompile Include="loadfile.c" />
+    <ClCompile Include="patch.c" />
+    <ClCompile Include="savefile.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="abstool.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
