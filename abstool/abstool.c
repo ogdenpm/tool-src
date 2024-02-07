@@ -71,7 +71,7 @@ _Noreturn void usage(char *fmt, ...) {
         "      -h      produce Intel Hex file, note no symbols\n"
         "      -i      produce Intel ISIS I bin file\n"
         "File format can be AOMF51, AOMF85, AOMF96, Intel Hex, Intel ISIS I Bin or binary image\n"
-        "Last format specified used, default is binary image\n"
+        "The last format specified is used, default is binary image\n"
         "If outfile is omitted, only a summary of the infile is produced\n",
         invokedBy);
     exit(1);

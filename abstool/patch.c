@@ -37,20 +37,19 @@
  *
  * Patch data values
  * =================
- * Patch data values are any of the following
+ * Patch data values can be either of the following
  *
- * 1) 'APPEND' ...    switch to APPEND mode
- * 2) addr [value ['x' repeatCnt]]*, where addr and repeatCnt are hex numbers and
- *      value is one of
- *          hexvalue
- *          'string'     note string supports escapes, \a \b \f \n \r \t \v \'\" \\ \xnn and \nnn
- *          -            set to uninitialised. (error in APPEND mode)
- *          =            leave unchanged i.e. skip the bytes. (error in APPEND mode)
+ * 'APPEND'                  switch to APPEND mode
+ * value ['x' repeatCnt]     where repeatCnt is a hex number and value is one of
+ *       number       hex number, no prefix/suffix
+ *       'string'     C string escapes \a \b \f \n \r \t \v \' \" \\ \xnn and \nnn are supported
+ *       -            set to uninitialised. (error in APPEND mode)
+ *       =            leave unchanged i.e. skip the bytes. (error in APPEND mode)
  *
  * Meta token assignments
  * ======================
  *
- * 3) metaToken ['='] value
+ * metaToken ['='] value
  *      where metaToken is one of
  *      TARGET      issues a warning if the specified target format is different
  *      SOURCE      issues a warning if the actual source file format is different
@@ -58,12 +57,12 @@
  *      START       set the start address if not set, else warn if source file start is different
  *      NAME        sets the name for AOMFxx formats otherwise ignored
  *      DATE        sets the date field for AOM96 otherwise ignored
- *      TRN         sets the TRN value for AOMFxx otherwise ignored. Error if invalid for target
- * file VER         sets the VER value for AOMF85 otherwise ignored MAIN        sets the MAIN module
- * value for AOMF85 & AOMF96 (bit 0 only use) MASK        sets the MASK value f or AOMF51 (low 4
- * bits only)
+ *      TRN         sets the TRN value for AOMFxx otherwise ignored. Error if invalid
+ *      VER         sets the VER value for AOMF85 otherwise ignored
+ *      MAIN        sets the MAIN module value for AOMF85 & AOMF96 (bit 0 only use)
+ *      MASK        sets the MASK value f or AOMF51 (low 4 bits only)
  *
- *      and value is one of
+ *  and value is one of
  *      fileFormat, used for TARGET and SOURCVE
  *          AOMF51   - Intel absolute OMF for 8051
  *          AOMF85   - Intel absolute OMF for 8080/8085
@@ -73,7 +72,7 @@
  *          IMAGE    - Binary Image
  *
  *      string for NAME and DATE
- *      hex for all others, note LOAD and START are word values others are byte values
+ *      hex number for all others. Note LOAD and START are word values others are byte values
  *
  *  The genpatch tool can be used to create patch files in the right format
  *
@@ -365,11 +364,13 @@ void patchfile(char *fname, image_t *image) {
         while ((s = getValue(s, &val)), val.type != EOL && val.type != ERROR) {
             switch (val.type) {
             case APPEND:
-                append = true;
-                // trim off any deleted data at the end
-                while (image->high > image->low && image->use[image->high - 1] == NOTSET)
-                    image->high--;
-                addr = image->high;
+                if (!append) {  // switch to append mode, ignore further requests
+                    append = true;
+                    // trim off any deleted data at the end
+                    while (image->high > image->low && image->use[image->high - 1] == NOTSET)
+                        image->high--;
+                    addr = image->high;
+                }
                 break;
             case TARGET:
                 if (image->target != val.hval)
