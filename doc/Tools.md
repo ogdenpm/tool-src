@@ -6,7 +6,79 @@ All the tools  now support being invoked with -v and -V. The lower case version 
 
 Note prebuilt 32bit Windows versions of these tools along and additional tools from my GitHub c-ports repository are included as part of my GitHub Intel80Tools repository. The documentation in the Intel80Tools repository provides information on all the tools along with information on various perl and windows cmd files scripts.
 
-### aomf2bin.exe
+### abstool
+
+This is a general purpose tool for converting between a number of absolute file formats and optionally applying patches. It subsumes obj2bin, which is now depreciated.
+
+```
+Usage:
+abstool [-v|-V|-h] |  [-l addr] [-a|-a51|-a85|-a96|-h|-i] infile [[patchfile] outfile]
+Where -v/-V   provide version information
+      -h      shows this help, if it is the only option
+      -l addr override the load address for binary images, default is 100H (CP/M)
+      -a51    produce AOMF51 file, note no symbols or debug info
+      -a|-a85 produce AOMF85 file, note no symbols or debug info
+      -a96    produce AOMF96 file, note no symbols or debug info
+      -h      produce Intel Hex file, note no symbols
+      -i      produce Intel ISIS I bin file
+File format can be AOMF51, AOMF85, AOMF96, Intel Hex, Intel ISIS I Bin or binary image
+The last format specified is used, default is binary image
+If outfile is omitted, only a summary of the infile is produced
+```
+
+The optional patch file has contains lines which are interpreted int one of two modes, PATCH and APPEND, with PATCH being the initial mode
+
+Unless part of a string, blanks are ignored and a punctuation symbol ends line processing
+
+In PATCH mode each line starts with a patch address followed by any number of patch data values.
+In APPEND mode, only patch data values are supported; the patch address is implicit
+
+Any number of meta token assignments (see below) can be interspersed between patch values
+
+#### Patch data values
+Patch data values can be either of the following
+
+```
+'APPEND'     switch to APPEND mode, rest of line is interpreted as per APPEND mode
+value ['x' repeatCnt] where repeatCnt is a hex number and value is one of
+	hexvalue
+    'string'  C string escapes \a \b \f \n \r \t \v \' \" \\ \xnn and \nnn are supported
+     -        set to uninitialised. (error in APPEND mode)
+     =        leave unchanged i.e. skip the bytes. (error in APPEND mode)
+```
+
+#### Meta token assignments
+
+```
+metaToken ['='] value
+where metaToken is one of
+  TARGET  issues a warning if the specified target format is different
+  SOURCE  issues a warning if the actual source file format is different
+  LOAD    issues a warning if the actual load address is different
+  START   set the start address if not set, else warn if source file start is different
+  NAME    sets the name for AOMFxx formats otherwise ignored
+  DATE    sets the date field for AOM96 otherwise ignored
+  TRN     sets the TRN value for AOMFxx otherwise ignored. Error if invalid
+  VER     sets the VER value for AOMF85 otherwise ignored
+  MAIN    sets the MAIN module value for AOMF85 & AOMF96 (bit 0 only use)
+  MASK    sets the MASK value f or AOMF51 (low 4 bits only)
+and value is one of
+  fileFormat, used for TARGET and SOURCE. Vaild values are
+    AOMF51   - Intel absolute OMF for 8051
+    AOMF85   - Intel absolute OMF for 8080/8085
+    AOMF96   - Intel absolute OMF for 8096
+    ISISBIN  - Intel ISIS I binary
+    HEX      - Intel Hex
+    IMAGE    - Binary Image
+  string for NAME and DATE
+  hex for other. Note LOAD and START are word values others are byte values
+```
+
+ The genpatch tool can be used to create patch files in the right format
+
+ Note APPEND mode is needed to support output files that are not simple binary images. A normal patch would incorrectly include the extra data within the loaded image
+
+### aomf2bin
 
 This utility take an absolute omf85, omf86 or omf286 file and creates binary images suitable for a prom programmer. There is an ability to set the base address of the prom and, whether to pad to a prom boundary, with 0 or 0xff. Optionally separate files can be created for odd and even bytes
 
@@ -19,7 +91,7 @@ usage: aomf2bin -v | -V | option* infile [outfile | -o odd_outfile | -e even_out
    -z         - sets uninitialsed data to 0 instead of 0xff
 ```
 
-### disIntelLib.exe
+### disIntelLib
 
 A homegrown utility to auto disassemble an Intel omf85 library into individual files. During the disassembly, whether the original code was PL/M or ASM is noted and the extension named accordingly.
 
@@ -29,15 +101,15 @@ Usage: disIntelLib infile
 
 Note, the first build of this tool may fail, since it uses generated files. Subsequent build attempts should be ok.
 
-### dumpintel.exe
+### dumpomf
 
-Dumps the detail of the content of omf85, omf51, omf96 and omf86 files. omf96 currently only shows the record types as I have no samples to verify. The others decode as per the intel specifications with some of the none Intel additions for omf86
+Dumps the detail of the content of omf85, omf51, omf96 and omf86 files. Interpretation of the various formats is per the intel specifications with some extensions for omf86. Due to lack of samples, limited testing has been done on omf96. This supersedes **dumpIntel** which has now been depreciated.
 
 ```
-usage: dumpintel -v | -V | objfile [outputfile]
+usage: dumpomf -v | -V | objfile [outputfile]
 ```
 
-### fixobj.exe
+### fixobj
 
 Supports modifying omf85 files to work around lack of historic / unreleased compilers that are currently not available.
 
@@ -90,25 +162,51 @@ The patch file option is used when more complex modifications are needed to make
 
 | Option | Typical Usage                                                |
 | ------ | ------------------------------------------------------------ |
-| n      | This performs the same basic operation as the -n command line option, however it also allows an entry point to be defined, with a \| c setting the seg id to ABS or CODE respectively and the address being the offset.<br />According to the OMF specification the entry info is ignored for non main modules and should be set to 0, however PLM v1.0 modules does not adhere to this standard, this option allows the PLM v1.0 behaviour to be mimicked. |
-| **p**  | This is used to patch a file in cases where it is not possible to get known compilers to generate the same code.  It only patches defined content and cannot be used to set data or uninitialised areas. Additionally fixup information is not changed, so care is needed when patching non located modules to make sure than only fixed data or offsets are modified. |
+| **n**  | This performs the same basic operation as the -n command line option, however it also allows an entry point to be defined, with a \| c setting the seg id to ABS or CODE respectively and the address being the offset.<br />According to the OMF specification the entry info is ignored for non main modules and should be set to 0, however PLM v1.0 modules does not adhere to this standard, this option allows the PLM v1.0 behaviour to be mimicked. |
+| **p**  | This is used to patch a file in cases where it is not possible to get known compilers to generate the same code.  It only patches defined content and cannot be used to set data or uninitialised areas. Additionally fixup information is not changed, so care is needed when patching non located modules to make sure than only fixed data or offsets are modified.<br />For absolute file **abstool** may be a better choice. |
 | **r**  | There are two primary uses of this. One is to delete or mask public references in a more targeted manor than the -l option. The second is to rename between ASM80 short names and the compiler long names. |
 | **s**  | Some historic files appear to have splits in longer OMF CONTENT records, possibly due to older linkers or small memory build machines. Although this split has no impact on the loaded image, this option is used to force a split, so that exact binary images can be created. The inverse is not needed as recent versions of link/locate can be used to join records. |
 
 Note the -t, -v and patch file s option are for cosmetic changes, images will be equivalent with or without them.
 
-Note **fixobj** is not able to resolve all differences between old files and those created by more recent tools, it does however allow creation of equivalent files. The key outstanding issue relates to problems when fixing the embedded library code that PLM v1.0 generates. In linking in the library functions, the linker does not emit the records in the same sequence, nor does it create the same the same record splits. Whilst this has no impact on subsequent use, it does mean that the files generated will not be a byte for byte match. The only resolution of this would be to write a bespoke linker.
+Note **fixobj** is not able to resolve all differences between old files and those created by more recent tools, it does however allow creation of equivalent files. The key outstanding issue relates to problems when fixing the embedded library code that PLM v1.0 generates. In linking in the library functions, the linker does not emit the records in the same sequence, nor does it create the same record splits. Whilst this has no impact on subsequent use, it does mean that the files generated will not be a byte for byte match. The only resolution of this would be to write a bespoke linker.
 
-### genpatch.exe
+### genpatch
 
-This is used to auto generate the patch files for obj2bin. They take as input the generated omf85 object file and the target binary file and generates the specified patchfile.
+It compares two absolute files and generates patch information that **abstool** can use to generate files.
+
+Supported absolute formats are AOMF51, AOMF85, AOMF96, ISIS BIN, Intel Hex and binary images.
 
 ```
-usage: genpatch [-i] [-s] [-z] objFile binfile patchfile
-where -i	indicates to interpret the bin file as an Intel .BIN file
-	  -s	reserved for future use to show strings as a trailing comment
-	  -z	by default obj2bin auto fills uninitialised data to 0 and the patchfile
-	  		assumes this. The option forces the 0 initialisation to be in patchfile
+usage: genpatch (-v | -V | -h)  | [-b addr]  infile targetfile [patchfile]
+Where -v/-V provide version information
+      -h       shows this help
+      -l addr  set explicit load address for binary image files. Default 100H (CP/M)
+File format can be AOMF51, AOMF85, AOMF96 Intel Hex, Intel ISIS I Bin or binary image
+If patchfile is omitted then the patch data is output to stdout
+```
+
+### getVersion.cmd/getVersion.pl (in Scripts directory)
+
+Tool to generate version string for builds. It is the successor to version.cmd which is gradually being replaced.
+
+```
+usage: getVersion -v | -h | [-q] [-w|-W]
+
+ When called without arguments version information writes to console
+
+ -v          - displays script version information
+ -h          - displays this output
+
+ -q          - Suppress console output, ignored if not writing to file
+ -w          - write file if version changed
+ -W          - write file even if version unchanged
+
+ The default generated file is _version.h as a C/C++ header file
+ An optional version.in can be used to override these
+
+ Example pre-build event:
+ CALL $(SolutionDir)scripts\getVersion.cmd -W
 ```
 
 ### install.cmd (in Scripts directory)
@@ -143,68 +241,13 @@ a file name of * matches all files so +* renables processing for all files
 -* stops all processing until the next control line (of limited use)
 ```
 
-### isisc.exe [depreciated]
+### isisc.exe [replaced by genpatch]
 
-Compares files using Intel's BIN format. This is now depreciated and the equivalent capability can be achieved in one of two ways
+### isisu.exe [replaced by abstool]
 
-1. Convert the files to OMF85 format using binobj, then using omfcmp to check for differences
-2. Use obj2bin with a patch file to add the junk data at the end of the file and use omfcmp or fc /b to compare
+### obj2bin [replaced by abstool]
 
-```
-Usage: isisc -v | -V | file1 file2
-```
-
-### isisu.exe
-
-This utility dumps the block ranges and start address from an Intel BIN format file. This is now of limited use as I tend to convert the BIN files to OMF and load directly into my disassembler, preserving the uninitialised data information.
-
-```
-Usage: %s -v | -V | file
-```
-
-### obj2bin.exe
-
-This utility is designed to support the creation of .COM, .T0 and .BIN files and includes the ability to patch the resultant file. Patching is potentially needed for two reasons.
-
-1. Intel's tools support uninitialised data but the .COM and .T0 are pure memory images. By default obj2bin will set these locations to 0, however the original binary production is likely to have used data in memory at the time of creation. Patching allows this random data to be matched
-2. It is possible that the binary images have data after the end of the program to align with sector boundaries, The patch capability allows this to be added at the end of the file.
-
-```
-Usage: obj2bin -v | -V |  [-i | -j] infile [patchfile] outfile
-Where -v/-V provide version information
-      -i    produces Intel formast .BIN files
-      -j    writes a jmp to entry at the start of file using
-            any initial lxi sp, is skipped.
-            the first byte must either uninitalised or a jmp (0c3h)
-
-The patch file, if used  has the following format and operates in one of two modes
-PATCH the initial mode and APPEND which starts after the key word APPEND is seen
-at the start of a line, the keyword is case insensitive. The two modes are required
-since for .BIN files in particular the extra data needs to occur after the start record
-Note for all lines leading space is ignored and all values are in hex.
-The address used to apply the patch is determined as follows
-PATCH mode:
-	Each line starts with a hex address to start the patch, anything other than a hex 		value is seen the line is ignored
-	
-APPEND mode:
-	Initially the address is set to the current highest used location when APPEND is 		seen there after the address increments for each new value appended
-
-Once the patch address is known all other data is a set of space separated values specifiers in one of the following
-	value ['x' repeatCnt]
-		where value can one of
-        hexvalue 
-		'string'                 note string supports \n \r \t \' and \\ escapes
-        -                        set to uninitialised
-		=                        leave unchanged i.e. skip the bytes
-Note in APPEND mode, - and = are teated as 0
-If the value is not a valid hex value, string, - or = the rest of the line is skipped
-if the x is present and repeatCnt is invalid an error is reported
-
-The above noted, it is safer to use a semicolon to start a comment as this is treated
-as the end of line
-```
-
-### omfcmp.exe
+### omfcmp
 
 This tool is designed to intelligently compare intel OMF85 files, however it will revert to comparing binary files.
 
@@ -212,19 +255,9 @@ This tool is designed to intelligently compare intel OMF85 files, however it wil
 Usage: omfcmp -v | -V | file1 file2
 ```
 
-### patchbin.exe [depreciated]
+### patchbin [replaced by abstool]
 
-Patch a binary .COM file. The original reason for creating this is now manageable with obj2bin
-
-```
-Usage: patchbin -v | -V | patchfile filetopatch
-where patch file has lines in the format
-address value*
-both address and value are in hex and the filetopatch is assumed to be load ax 100H
-The file is extended if necessary
-```
-
-### plmpp.exe
+### plmpp
 
 Only PL/M v4 supports a pre-processor. This utility provides a pre-processor for older versions of PL/M.
 
@@ -237,11 +270,11 @@ Where -f				- expands a level of include files, each -f does another level
 	  -o outfile		- specifies the output file, otherwise outputs to stdout
 ```
 
-### unpack.exe
+### unpack
 
 This file support extracting files form a packed source file.
 
-Note unlike the perl variant of this utility in Intel80Tools, this version always extracts and updates the timestamp.
+Note unlike the perl variant of this utility in Intel80Tools, this version currently always extracts and updates the timestamp.
 
 ```
 Usage: unpack -v | -V | [-r] [file]
@@ -250,7 +283,7 @@ where directory is current directory name
 -r does a recursive unpack
 ```
 
-### version.cmd (in Scripts directory)
+### version.cmd (in Scripts directory) [depreciated]
 
 This is used to generate version information from a git repository for visual studio builds. The master repository for this tool is my github repository [versionTools](https://github.com/ogdenpm/versionTools)
 
@@ -277,6 +310,6 @@ usage: version [-h] | [-q] [-f] [-a appid] [CACHE_PATH OUT_FILE]
 ------
 
 ```
-Updated by Mark Ogden 26-Nov-2020 
+Updated by Mark Ogden 7-Feb-2024
 ```
 
