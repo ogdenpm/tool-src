@@ -19,7 +19,6 @@
  *  MA  02110-1301, USA.                                                    *
  *                                                                          *
  ****************************************************************************/
-#define _CRT_SECURE_NO_WARNINGS
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,11 +27,11 @@
 #include <string.h>
 #include <ctype.h>
 #include <io.h>
+#include "showVersion.h"
 
 #define MAXNAME  31
 #define CHUNK   32
 
-void showVersion(FILE *fp, bool full);
 char *program;
 
 uint8_t recBuf[0x10000];        // big enough for any record
@@ -704,10 +703,7 @@ int main(int argc, char **argv) {
     FILE *fpin, *fpout;
     option_t options = { -1, -1 };
 
-    if (argc == 2 && _stricmp(argv[1], "-v") == 0) {
-        showVersion(stdout, argv[1][1] == 'V');
-        exit(0);
-    }
+    CHK_SHOW_VERSION(argc, argv);
 
     if (!parseOptions(argc, argv, &options)) {
         usage();
