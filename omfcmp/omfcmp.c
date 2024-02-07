@@ -27,7 +27,7 @@
 #include <string.h>
 #include <stdarg.h>
 
-void showVersion(FILE *fp, bool full);
+#include "showVersion.h"
 char *invokedBy;
 
 enum {
@@ -873,10 +873,7 @@ int main(int argc, char **argv)
     file_t *left, *right;
     invokedBy = argv[0];
 
-    if (argc == 2 && _stricmp(argv[1], "-v") == 0) {
-        showVersion(stdout, argv[1][1] == 'V');
-        exit(0);
-    }
+    CHK_SHOW_VERSION(argc, argv);
     if (argc != 3)
         usage(NULL);
 
