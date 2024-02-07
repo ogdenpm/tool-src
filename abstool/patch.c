@@ -1,19 +1,103 @@
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
+/****************************************************************************
+ *  patch.c is part of abstool                                         *
+ *  Copyright (C) 2024 Mark Ogden <mark.pm.ogden@btinternet.com>            *
+ *                                                                          *
+ *  This program is free software; you can redistribute it and/or           *
+ *  modify it under the terms of the GNU General Public License             *
+ *  as published by the Free Software Foundation; either version 2          *
+ *  of the License, or (at your option) any later version.                  *
+ *                                                                          *
+ *  This program is distributed in the hope that it will be useful,         *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of          *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the           *
+ *  GNU General Public License for more details.                            *
+ *                                                                          *
+ *  You should have received a copy of the GNU General Public License       *
+ *  along with this program; if not, write to the Free Software             *
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,              *
+ *  MA  02110-1301, USA.                                                    *
+ *                                                                          *
+ ****************************************************************************/
+
 #include "abstool.h"
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
+/*
+ * The optional patch file has two modes, PATCH and APPEND, with PATCH being the initial mode
+ *
+ * Unless part of a string, blanks are ignored and a punctuation symbol ends line processing
+ *
+ * In PATCH mode each line starts with a patch address followed by any number of patch data values.
+ * In APPEND mode, only patch data values are supported; the patch address is implicit
+ *
+ * Any number of meta token assignments (see below) can be interspersed between patch values
+ *
+ * Patch data values
+ * =================
+ * Patch data values are any of the following
+ *
+ * 1) 'APPEND' ...    switch to APPEND mode
+ * 2) addr [value ['x' repeatCnt]]*, where addr and repeatCnt are hex numbers and
+ *      value is one of
+ *          hexvalue
+ *          'string'     note string supports escapes, \a \b \f \n \r \t \v \'\" \\ \xnn and \nnn
+ *          -            set to uninitialised. (error in APPEND mode)
+ *          =            leave unchanged i.e. skip the bytes. (error in APPEND mode)
+ *
+ * Meta token assignments
+ * ======================
+ *
+ * 3) metaToken ['='] value
+ *      where metaToken is one of
+ *      TARGET      issues a warning if the specified target format is different
+ *      SOURCE      issues a warning if the actual source file format is different
+ *      LOAD        issues a warning if the actual load address is different
+ *      START       set the start address if not set, else warn if source file start is different
+ *      NAME        sets the name for AOMFxx formats otherwise ignored
+ *      DATE        sets the date field for AOM96 otherwise ignored
+ *      TRN         sets the TRN value for AOMFxx otherwise ignored. Error if invalid for target
+ * file VER         sets the VER value for AOMF85 otherwise ignored MAIN        sets the MAIN module
+ * value for AOMF85 & AOMF96 (bit 0 only use) MASK        sets the MASK value f or AOMF51 (low 4
+ * bits only)
+ *
+ *      and value is one of
+ *      fileFormat, used for TARGET and SOURCVE
+ *          AOMF51   - Intel absolute OMF for 8051
+ *          AOMF85   - Intel absolute OMF for 8080/8085
+ *          AOMF96   - Intel absolute OMF for 8096
+ *          ISISBIN  - Intel ISIS I binary
+ *          HEX      - Intel Hex
+ *          IMAGE    - Binary Image
+ *
+ *      string for NAME and DATE
+ *      hex for all others, note LOAD and START are word values others are byte values
+ *
+ *  The genpatch tool can be used to create patch files in the right format
+ *
+ *  Note APPEND mode is needed to support output files that are not simple binary images.
+ *  A normal patch would incorrectly include the extra data within the loaded image.
+ *
+ */
 
+/* context for parsing*/
+enum { PATCHADDRESS, PATCHVAL, APPENDVAL, METAOPT };
+int context    = PATCHADDRESS;
+
+char *tokens[] = { "APPEND", "AOMF51", "AOMF85", "AOMF96", "ISISBIN", "HEX", "IMAGE", "TARGET",
+                   "SOURCE", "NAME",   "DATE",   "START",  "LOAD",    "TRN", "VER",   "MAIN",
+                   "MASK",   "=",      "-",      "HEXVAL", "STRING",  "EOL", "ERROR" };
 
 typedef struct {
     uint8_t type;
     union {
         unsigned hval;
-        char *str;
+        char str[256]; // used to store token, for STRING this is in pascal string format else C
     };
     int repeatCnt;
 } value_t;
-
 
 char *skipSpc(char *s) {
     while (*s == ' ' || *s == '\t')
@@ -21,7 +105,11 @@ char *skipSpc(char *s) {
     return s;
 }
 
-
+char *skipEqu(char *s) {
+    while (*(s = skipSpc(s)) == '=')
+        s++;
+    return s;
+}
 
 int parseHex(char *s, char **end) {
     int val = 0;
@@ -33,213 +121,346 @@ int parseHex(char *s, char **end) {
         }
     } else
         val = -1;
-    *end = s;
+    if (end)
+        *end = s;
     return val;
 }
 
+char *parseToken(char *s, value_t *val) {
+    static char simple[]        = "-=\n";
+    static uint8_t stype[]      = { DEINIT, SKIP, EOL };
+    static char const escchar[] = "abfnrtv'\"\\";
+    static char const mapchar[] = "\a\b\f\n\r\t\v'\"\\";
+    char token[8];
+    char *t;
+
+    s = skipSpc(s);
+
+    if (isalpha(*s)) {
+        int i, j;
+        for (i = 0; i < 7 && isalnum(s[i]); i++)
+            token[i] = toupper(s[i]);
+        token[i] = '\0';
+
+        for (j = APPEND; j <= MASK; j++)
+            if (strcmp(tokens[j - APPEND], token) == 0) {
+                val->type = j;
+                return s + i;
+            }
+    }
+    if (isxdigit(*s)) {
+        val->type = HEXVAL;
+        val->hval = 0;
+        while (isxdigit(*s)) {
+            val->hval = val->hval * 16 + (isdigit(*s) ? *s - '0' : tolower(*s) - 'a' + 10);
+            s++;
+        }
+        return s;
+    } else if (*s == '\'') {
+        int len;
+        for (len = 0, ++s; len < 256 && *s && *s != '\''; len++) {
+            if (*s == '\\') {
+                if (!*++s)
+                    break;
+                if ((t = strchr(escchar, *s))) {
+                    val->str[len + 1] = mapchar[t - escchar];
+                    s++;
+                } else if (*s == 'x') {
+                    int n;
+                    if ((n = parseHex(s + 1, &s)) < 0) {
+                        warning("Patch file string \\x missing value using 0\n");
+                        n = 0;
+                    } else if (n > 255)
+                        warning("\\x%X is too large, using \\x%X\n", n, n & 0xff);
+                    val->str[len + 1] = (uint8_t)n;
+                } else if (isdigit(*s)) {
+                    int n = 0;
+                    for (int i = 0; i < 3 && '0' <= *s && *s <= '7'; s++)
+                        n = n * 8 + *s - '0';
+                    if (n > 255)
+                        warning("\\%o value is too large, using \\%o\n", n, n & 0xff);
+                    val->str[len + 1] = (uint8_t)n;
+                } else {
+                    if (!isprint(*s)) {
+                        val->type = ERROR;
+                        sprintf(val->str, "String contains non printable char %02XH", *s);
+                        return s;
+                    }
+                    val->str[len + 1] = *s++;
+                }
+            } else {
+                if (!isprint(*s)) {
+                    val->type = ERROR;
+                    sprintf(val->str, "String contains non printable char %02XH", *s);
+                    return s;
+                }
+                val->str[len + 1] = *s++;
+            }
+        }
+        if (*s == '\'') {
+            val->type   = STRING;
+            val->str[0] = (uint8_t)len;
+        } else {
+            val->type = ERROR;
+            strcpy(val->str, *s ? "string too long" : "unterminated string");
+        }
+    } else if ((t = strchr(simple, *s)))
+        val->type = stype[t - simple];
+    else if (!*s || *s == '\n' || *s == '\r' || ispunct(*s))
+        val->type = EOL;
+    else {
+        val->type = ERROR;
+        sprintf(val->str, isprint(*s) ? "Unexpected char %c" : "Non printable char %02XH", *s);
+    }
+    return s + 1;
+}
 // scan the string starting at s for a value and optional repeat count
 // sets the parsed information in *val (a value_t)
 // returns a pointer to the next character to parse
 
-char *getValue(char *s, value_t *val) {
-    int hval;
-    val->repeatCnt = -1;
-    val->type      = ERROR;
-
-    s              = skipSpc(s);
-    if (strnicmp(s, "append", 6) == 0) {
-        val->type = APPEND;
-        return s + 6;
-    }
-    if (strnicmp(s, "start", 5) == 0) {
-        if ((hval = parseHex(s + 5, &s)) >= 0) {
-            val->type = START;
-            val->hval = hval;
-        }
-        return s;
-    }
-    if ((hval = parseHex(s, &s)) >= 0) {
-        val->type = HEXVAL;
-        val->hval = hval;
-    } else if (*s == '\'') {
-        val->str = s + 1;
-        while (*++s && *s != '\'') {
-            if (*s == '\\' && s[1])
-                s++;
-        }
-        if (!*s)
-            return s;
-        val->type = STRING;
-    } else {
-        if (*s == '-')
-            val->type = DEINIT;
-        else if (*s == '=')
-            val->type = SKIP;
-        else {
-            val->type = !*s || *s == '\n' || *s == ';' ? EOL : INVALID;
-            return *s ? s + 1 : s;
-        }
-        s++;
-    }
+char *getRepeat(char *s, value_t *val) {
+    value_t rept;
     s = skipSpc(s);
-    if (tolower(*s) == 'x') { // we have a repeat count
-        if ((hval = parseHex(s + 1, &s)) >= 1)
-            val->repeatCnt = hval;
-        else
+    if (tolower(*s) == 'x') {
+        s = parseToken(s + 1, &rept);
+        if (rept.type == HEXVAL)
+            val->repeatCnt = rept.hval;
+        else {
             val->type = ERROR;
-    }
+            strcpy(val->str, "Hex repeat count expected");
+        }
+    } else
+        val->repeatCnt = 1;
     return s;
 }
 
-unsigned fill(int addr, value_t *val, bool appending) {
-    char *s;
+char *getValue(char *s, value_t *val) {
+    value_t opt;
 
-    if (addr < low)
-        low = addr;
-    if (val->repeatCnt < 0)
-        val->repeatCnt = 1;
+    s = parseToken(s, val);
+    // get meta value if needed
+    if (TARGET <= val->type && val->type <= MASK) {
+        if (*(s = skipSpc(s)) == '=')
+            s++;
+        s = parseToken(s, &opt);
+    }
+
+    switch (val->type) {
+    case APPEND:
+        break;
+    case HEXVAL:
+    case STRING:
+    case SKIP:
+    case DEINIT:
+        s = getRepeat(s, val);
+        break;
+    case TARGET:
+    case SOURCE:
+        if (opt.type < AOMF51 || opt.type > IMAGE) {
+            sprintf(val->str, "Invalid value for %s", tokens[val->type - APPEND]);
+            val->type = ERROR;
+        } else
+            val->hval = opt.type;
+        break;
+    case NAME:
+    case DATE:
+        if (opt.type == STRING) {
+            val->str[0] = min(opt.str[0], opt.str[0] > val->type == NAME ? 40 : 64);
+            memcpy(val->str, opt.str, opt.str[0] + 1);
+        } else {
+            if (opt.type == ERROR)
+                strcpy(val->str, opt.str);
+            else
+                sprintf(val->str, "%s requires a string value", tokens[val->type - APPEND]);
+            val->type = ERROR;
+        }
+        break;
+    case START:
+    case LOAD:
+        if (opt.type != HEXVAL || opt.hval > 0xffff) {
+            sprintf(val->str, "Invalid value for %s", tokens[val->type - APPEND]);
+            val->type = ERROR;
+        } else
+            val->hval = opt.hval;
+        break;
+    case TRN:
+    case VER:
+    case MAIN:
+    case MASK:
+        if (opt.type != HEXVAL || opt.hval > 0xff) {
+            sprintf(val->str, "Invalid value for %s", tokens[val->type - APPEND]);
+            val->type = ERROR;
+        } else
+            val->hval = opt.hval;
+        break;
+    case EOL:
+    case ERROR:
+        break;
+    default:
+        sprintf(val->str, "Invalid use of %s", tokens[val->type - APPEND]);
+        val->type = ERROR;
+        break;
+    }
+
+    return s;
+}
+
+unsigned fill(image_t *image, int addr, value_t *val, bool appending) {
+    if (addr < image->low)
+        image->low = addr;
     for (int i = 0; i < val->repeatCnt; i++) {
-        if (addr >= MAXMEM) {
-            fprintf(stderr, "appending past 0xFFFF\n");
+        if (appending) {
+            if (addr >= MAXMEM + MAXAPPEND) {
+                warning("Too much append data");
+                break;
+            }
+        } else if (addr >= MAXMEM) {
+            warning("Patching above 0xffff");
             break;
         }
+
         switch (val->type) {
         case HEXVAL:
-            inMem[addr] = val->hval;
-            use[addr++] = appending ? PADDING : DATA;
+            image->mem[addr]   = (uint8_t)val->hval;
+            image->use[addr++] = appending ? APPEND : SET;
             break;
         case SKIP:
-            if (use[addr] == UNINITIALISED)
-                fprintf(stderr, "Skipping uninitialised data at %04X\n", addr);
             addr++;
             break;
         case DEINIT:
-            use[addr++] = UNINITIALISED;
+            image->use[addr++] = NOTSET;
             break;
         case STRING:
-            for (s = val->str; *s && *s != '\'' && addr < MAXMEM;) {
-                if (*s == '\\') {
-                    static char const escchar[] = "abfnrtv'\"\\";
-                    static char const mapchar[] = "\a\b\f\n\r\t\v'\"\\";
-                    char const *t               = strchr(escchar, *++s);
-                    int n                       = 0;
-                    if (t) {
-                        inMem[addr] = mapchar[t - escchar];
-                        s++;
-                    } else if (*s == 'x') {
-                        if ((n = parseHex(s + 1, &s)) < 0) {
-                            fprintf(stderr, "Warning: \\x missing value\n");
-                            n = 0;
-                        } else if (n > 255)
-                            fprintf(stderr, "Warning: \\x%X is too large, using \\x%X\n", n,
-                                    n & 0xff);
-                        inMem[addr] = (uint8_t)n;
-                    } else if (isdigit(*s)) {
-                        for (int i = 0; i < 3 && '0' <= *s && *s <= '7'; s++)
-                            n = n * 8 + *s - '0';
-                        if (n > 255)
-                            fprintf(stderr, "Warning: \\%o value is too large, using \\%o\n", n,
-                                    n & 0xff);
-                        inMem[addr] = (uint8_t)n;
-                    } else {
-                        if (isprint(*s))
-                            fprintf(stderr, "Warning: invalid escaped char %c\n", *s);
-                        else
-                            fprintf(stderr, "Warning: invalid escaped char %02X\n", *s);
-                        inMem[addr] = *s++;
-                    }
-                } else {
-                    if (!isprint(*s))
-                        fprintf(stderr, "warning invalid char %02X\n", *s);
-                    inMem[addr] = *s++;
-                }
-                use[addr++] = appending ? PADDING : DATA;
+            for (int i = 1; i <= val->str[0] && addr < (appending ? MAXMEM + MAXAPPEND : MAXMEM);
+                 i++) {
+                image->mem[addr]   = val->str[i];
+                image->use[addr++] = appending ? APPEND : SET;
             }
+            break;
         }
     }
-    if (addr > high)
-        high = addr;
+    if (!appending && addr > image->high)
+        image->high = addr;
     return addr;
 }
 
-void patchfile(char *fname) {
+void patchfile(char *fname, image_t *image) {
     char line[256];
     value_t val;
     char *s;
-    bool append = false;
-    int addr;
+    int addr      = -1;
+    bool append   = false;
+    image->padLen = 0; // ignore any input file padding
 
-    FILE *fp = fopen(fname, "rt");
+    FILE *fp      = fopen(fname, "rt");
     if (fp == NULL) {
         fprintf(stderr, "can't load patchfile (ignoring)\n");
         return;
     }
 
-    while (fgets(line, 256, fp)) {
-        for (s = line; *s; s++)
-            if ((*s < ' ' && *s != '\r' && *s != '\n' && *s != '\t') || *(uint8_t *)s >= 0x80)
-                error("Patch file contains binary data");
+    while (fgets(s = line, 256, fp)) {
+        if (!append)
+            addr = -1;
 
-        s = getValue(line, &val);
-        if (val.type == EOL || val.type == INVALID)
-            continue;
-        if (val.type == ERROR) {
-            fprintf(stderr, "invalid patch line: %s", line);
-            continue;
-        }
+        while ((s = getValue(s, &val)), val.type != EOL && val.type != ERROR) {
+            switch (val.type) {
+            case APPEND:
+                append = true;
+                // trim off any deleted data at the end
+                while (image->high > image->low && image->use[image->high - 1] == NOTSET)
+                    image->high--;
+                addr = image->high;
+                break;
+            case TARGET:
+                if (image->target != val.hval)
+                    warning("patch file was written for target %s not %s",
+                            tokens[val.hval - APPEND], tokens[image->target - APPEND]);
+                break;
+            case SOURCE:
+                if (image->source != val.hval)
+                    warning("patch file was written for %s source not %s",
+                            tokens[val.hval - APPEND], tokens[image->source - APPEND]);
+                break;
+            case NAME:
+                if (val.str[0] == 0 || isdigit(val.str[0]))
+                    val.type = ERROR;
+                else {
+                    for (int i = 1; i <= val.str[0]; i++) {
+                        uint8_t c = val.str[i];
+                        if (isalnum(c) || c == '?' || c == '@' || c == '_')
+                            image->name[i] = toupper(c);
+                        else {
+                            val.type = ERROR;
+                            break;
+                        }
+                    }
+                }
+                if (val.type == ERROR)
+                    strcpy(val.str, "NAME - module name is invalid");
+                else
+                    image->name[0] = val.str[0];
+                break;
+            case LOAD:
+                if (image->mLoad != val.hval)
+                    warning("patch file was written for %04XH load address not %04XH", val.hval,
+                            image->mLoad);
+                break;
+            case START:
+                if (image->mStart >= 0 && image->mStart != val.hval) {
+                    warning("patch file was written for %04XH start not %04XH", val.hval,
+                            image->mStart);
+                    break;
+                }
+                // fall through, to set start
+            case TRN:
+            case VER:
+            case MAIN:
+            case MASK:
+                image->meta[val.type - START] = val.hval;
+                break;
 
-        if (val.type == START) {
-            start = val.hval;
-            continue;
-        } else if (append) {
-            if (val.type == APPEND)
-                s = getValue(s, &val);
-        } else if (val.type == APPEND) {
-            /* before append data may have been deleted so get the correct end */
-            while (high > low && use[high - 1] == UNINITIALISED)
-                high--;
-            addr   = high;
-            append = true;
-            s      = getValue(s, &val);
-        } else { // get the start address
-            if (val.hval >= 0x10000) {
-                fprintf(stderr, "Address (%04X) too big: %s", val.hval, line);
-                continue;
-            } else if (val.repeatCnt >= 0) {
-                fprintf(stderr, "Address cannot have repeat count: %s", line);
-                continue;
+            case HEXVAL:
+                if (addr < 0) {
+                    addr = val.hval;
+                    break;
+                }
+            case STRING:
+            case SKIP:
+            case DEINIT:
+                if (addr < 0) {
+                    strcpy(val.str, "Patch data with no patch address");
+                    val.type = ERROR;
+                } else if (append && val.type == SKIP || val.type == DEINIT) {
+                    sprintf(val.str, "%s not valid in append mode", tokens[val.type - APPEND]);
+                    val.type = ERROR;
+                } else
+                    addr = fill(image, addr, &val, append);
+                break;
             }
-            addr = val.hval;
-            s    = getValue(s, &val);
-        }
-
-        // at this point addr has the insert point and val has the first value to put in
-        bool ok = true;
-        while (ok && val.type != EOL && val.type != INVALID && val.type != ERROR) {
-            if (val.type == HEXVAL && val.hval >= 0x100) {
-                fprintf(stderr, "bad hex value: %s", line);
-                ok = false;
-            } else if (append && (val.type == SKIP || val.type == DEINIT)) {
-                fprintf(stderr, "'%c' invalid in append mode: %s", val.type == SKIP ? '=' : '-',
-                        line);
-                ok = false;
-            } else if (val.type == APPEND || val.type == START) {
-                fprintf(stderr, "%s only valid at start of line: %s",
-                        val.type == APPEND ? "APPEND" : "START", line);
-                ok = false;
-            } else {
-                addr = fill(addr, &val, append);
-                s    = getValue(s, &val);
-            }
+            if (val.type == ERROR)
+                break;
         }
         if (val.type == ERROR)
-            fprintf(stderr, "bad value: %s", line);
+            fprintf(stderr, "Invalid patch line: %s in %s\n", val.str, line);
     }
+    if (append)
+        image->padLen = addr - image->high;
 
     fclose(fp);
-    // trim off any deleted data at start or end
-    while (low < high && use[low] == UNINITIALISED)
-        low++;
-    while (high > low && use[high - 1] == UNINITIALISED)
-        high--;
+    while (image->low < image->high && image->use[image->low] == NOTSET)
+        image->low++;
+    while (image->high > image->low && image->use[image->high - 1] == NOTSET)
+        image->high--;
+    printf("Output file: Load %04XH-%04XH  Start ", image->low, image->high - 1);
+
+    if (image->target == AOMF51 || image->target == AOMF96 || image->target == IMAGE)
+        printf("IMPLCIT");
+    else if (image->mStart < 0) {
+        printf("NOT SET");
+    } else
+        printf("%04XH", image->mStart);
+
+    if (image->padLen)
+        printf("  Padding %04XH", image->padLen);
+    putchar('\n');
 }

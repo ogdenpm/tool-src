@@ -225,6 +225,7 @@ copy /B Generated\GIT_VERSION_INFO+,, Generated\GIT_VERSION_INFO</Command>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="abstool.h" />
+    <ClInclude Include="image.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

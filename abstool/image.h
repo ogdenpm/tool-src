@@ -1,5 +1,5 @@
 /****************************************************************************
- *  abstool.h is part of abstool                                         *
+ *  image.h is part of abstool                                         *
  *  Copyright (C) 2024 Mark Ogden <mark.pm.ogden@btinternet.com>            *
  *                                                                          *
  *  This program is free software; you can redistribute it and/or           *
@@ -20,21 +20,78 @@
  ****************************************************************************/
 
 #pragma once
-#include <stdbool.h>
 #include <stdint.h>
-#include "image.h"
+#include <stdbool.h>
 
-#define HEXBYTES  16
+#define MAXMEM  0x10000
+#define MAXAPPEND   256
 
 
+/* types for values */
+enum {
+    NOTSET = 0, // memory use values
+    SET,
+    UNSET,       // use updates for patches
+    CHANGE,
+    APPEND,     // also start of patch keywords
+    AOMF51,      // binary file types, also meta values
+    AOMF85,
+    AOMF96,
+    ISISBIN,
+    HEX,
+    IMAGE,
+    TARGET,     // meta tokens
+    SOURCE,
+    NAME,
+    DATE,
+    START,
+    LOAD,
+    TRN,
+    VER,
+    MAIN,
+    MASK,       
+    SKIP,       // patch values
+    DEINIT,
+    HEXVAL,
+    STRING,
+    EOL,
+    ERROR,
+};
 
-_Noreturn void usage(char *fmt, ...);
+
+// Intel AOMFXX record types
+#define MODHDR     2
+#define MODEND     4
+#define MODCONTENT 6
+#define MODEOF     0xe
+
+#define mTRN       meta[TRN - TRN
+
+
+typedef struct {
+    int low;
+    int high;
+    int padLen;
+    uint8_t mem[MAXMEM + MAXAPPEND + 1]; // allows for append and a final NOTSET sentinal
+    uint8_t use[MAXMEM + MAXAPPEND + 1];
+    // meta data
+    int8_t target;   // AOMF51, AOMF85, AOMF96, ISISI, HEX, IMAGE
+    int8_t source;
+    uint8_t name[41];
+    uint8_t date[65];
+    // numeric meta data
+    int meta[MASK - START + 1];
+} image_t;
+
+#define mStart meta[0]
+#define mLoad  meta[1]
+#define mTrn   meta[2]
+#define mVer    meta[3]
+#define mMain  meta[4]
+#define mMask  meta[5]
+
+extern int loadAddr;
+
+bool loadFile(char *s, image_t *image);
 _Noreturn void error(char *fmt, ...);
 void warning(char *fmt, ...);
-
-void setOMFRec(image_t *image, int outFormat);
-void insertJmpEntry();
-int saveFile(char *s, image_t *image);
-
-int parseHex(char *s, char **end);
-void patchfile(char *s, image_t *image);
