@@ -20,9 +20,6 @@
  *                                                                          *
  ****************************************************************************/
 
-#define _CRT_SECURE_NO_WARNINGS
-#define _CRT_NONSTDC_NO_WARNINGS
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -32,8 +29,9 @@
 #include <stdbool.h>
 #include <stdarg.h>
 
-void showVersion(FILE *fp, bool full);
-__declspec(noreturn) void usage(char *fmt, ...);
+#include "showVersion.h"
+
+_Noreturn void usage(char *fmt, ...);
 char *invokedBy;
 
 #define MAX_LINE    512
@@ -170,10 +168,8 @@ int main(int argc, char **argv) {
     bool recurse = false;
     invokedBy = argv[0];
 
-    if (argc == 2 && _stricmp(argv[1], "-v") == 0) {
-        showVersion(stdout, argv[1][1] == 'V');
-        exit(0);
-    }
+    CHK_SHOW_VERSION(argc, argv);
+
     while (--argc > 0 && **++argv == '-') {
         if (strcmp(*argv, "-r") == 0)
             recurse = true;
