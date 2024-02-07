@@ -26,8 +26,8 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <stdint.h>
+#include "showversion.h"
 
-void showVersion(FILE *fp, bool full);
 
 enum {
     ALL, ODD, EVEN
@@ -199,7 +199,88 @@ bool dump(int mode, char *file) {
     return true;
 }
 
-/*
+static uint8_t hexcrc;
+
+uint32_t getHex1(FILE *fp) {
+    int c = getc(fp);
+    if (isdigit(c))
+        return c - '0';
+    else if (isupper(c) && isxdigit(c))
+        return c - 'A' + 10;
+    return 0x10000;
+}
+
+uint32_t getHex2(FILE *fp) {
+    uint8_t val = getHex1(fp) * 16;
+    hexcrc += (uint8_t)(val += getHex1(fp));
+    return val;
+}
+
+
+uint32_t getHex4(FILE *fp) {
+    uint16_t val = getHex2(fp) * 256;
+    return val + getHex2(fp);
+}
+
+bool loadHex(FILE *fp) {
+    int c;
+    uint32_t bigAddr = 0;
+    bool isSBA = false;       // true if SBA mode with 64k address wrap
+    while (!feof(fp)) {
+        while ((c = getc(fp)) != ':')
+            if (c == EOF)
+                return false;
+        hexcrc = 0;
+        uint32_t len = getHex2(fp);
+        if (len > 255)
+            return false;
+        uint32_t offset = getHex4(fp);
+        if (offset > 0xffff)
+            return false;
+        uint32_t type = getHex2(fp);
+        if (type > 5)
+            return false;
+        for (uint32_t i = 0; i < len;  i++) {
+            uint32_t c = getHex2(fp);
+            if (c > 255)
+                return false;
+            rec[i] = c;
+        }
+        if (getHex2(fp) > 255 || hexcrc)
+            return false;
+        switch (type) {
+        case 0:
+            if (base == 0xffffffff)
+                base = bigAddr + offset;
+            if (!isSBA || offset + len < 0x10000)
+                loadChunk(0, offset + bigAddr, len);
+            else {      // wrap around case
+                uint32_t plen = 0x10000 - offset;
+                loadChunk(0, offset + bigAddr, plen);
+                loadChunk(plen, bigAddr, len - plen);
+            }
+            break;
+        case 1:
+            return true;
+        case 2:
+            bigAddr  = word(rec) << 4;
+            isSBA   = true;
+            break;
+        case 3:
+            printf("CS:IP %04X:%04X", word(rec), word(rec + 2));
+            break;
+        case 4:
+            bigAddr  = word(rec) << 16;
+            break;
+        case 5:
+            uint32_t eip = dword(rec);
+            printf("EIP: 0x%X\n", eip);
+            break;
+        }
+    }
+    return true;
+}
+    /*
     process an aomf85 file - returns true if good load
 */
 bool loadOmf85(FILE *fp) {
@@ -294,10 +375,8 @@ int main(int argc, char **argv) {
     int arg;
     int fill = 0xff;
 
-    if (argc == 2 && _stricmp(argv[1], "-v") == 0) {
-        showVersion(stdout, argv[1][1] == 'V');
-        exit(0);
-    }
+    CHK_SHOW_VERSION(argc, argv);
+
     for (arg = 1; arg < argc; arg++) {
         if (strcmp(argv[arg], "-b") == 0 && arg + 1 < argc) {
             char tailch;
@@ -327,6 +406,12 @@ int main(int argc, char **argv) {
     case 0x2:  loaded = loadOmf85(fp); break;
     case 0x82: loaded = loadOmf86(fp); break;
     case 0xA2: loaded = loadOmf286(fp); break;
+    case ':':
+        ungetc(':', fp);
+    case ' ':
+    case '\t':
+        loaded = loadHex(fp);
+        break;
     default:
         fprintf(stderr, "unknown file format marker %02X\n", magic);
         fclose(fp);
@@ -335,7 +420,7 @@ int main(int argc, char **argv) {
 
     if (loaded) {                   // if good load generate the bin files
         int select;
-        printf("Base=%08X Load Range=%08X-%08X\n", base, base + botrom, base + toprom - 1);
+        printf("Base=%04XH Load Range=%04XH-%04XH\n", base, base + botrom, base + toprom - 1);
         if (pad) {                  // if padding set toprom to size to match an eprom (2^n k)
             unsigned i;
             for (i = 256; i < toprom; i <<= 1)
