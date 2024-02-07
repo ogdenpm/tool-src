@@ -27,8 +27,8 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include "showVersion.h"
 
-void showVersion(FILE *fp, bool full);
 char *invokedBy;
 
 #ifdef _MSC_VER
@@ -507,10 +507,7 @@ int main(int argc, char **argv)
     char *outChutfile = NULL;
     int c;
 
-    if (argc == 2 && _stricmp(argv[1], "-v") == 0) {
-        showVersion(stdout, argv[1][1] == 'V');
-        exit(0);
-    }
+    CHK_SHOW_VERSION(argc, argv);
 
     strcpy(line, "$");			/* initialise the line so that set / reset can reuse common code*/
 
@@ -550,7 +547,6 @@ int main(int argc, char **argv)
         }
 
     if (argc - optind != 1) {
-        showVersion(stderr, false);
         fprintf(stderr, "\nusage: plmpp -v | -V |  [-f] [-F] [-sVAR[=val]] [-rVAR] [-o outfile] srcfile\n");
         return 1;
     }
