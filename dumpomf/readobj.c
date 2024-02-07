@@ -53,7 +53,7 @@ void markRecPos() {
 }
 
 uint16_t getRecPos() {
-    return recPtr - rec;
+    return (uint16_t)(recPtr - rec);
 }
 
 void setRecPos(uint16_t pos) {

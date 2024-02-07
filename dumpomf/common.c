@@ -216,7 +216,7 @@ int setFieldTabs(field_t const *fields) {
     memset(fieldTabs, 0, sizeof(fieldTabs));
     for (i = 0, ts = 0; i < MAXFIELDS && fields[i].label; i++) {
         fieldTabs[i] = ts;
-        int lw       = strlen(fields[i].label);
+        int lw       = (int)strlen(fields[i].label);
         ts += lw > fields[i].width ? lw + 1 : fields[i].width + 1;
     }
     return ts;
