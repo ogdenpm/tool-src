@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>disable</Nullable>
+		<Deterministic>false</Deterministic>
+		<AssemblyVersion>1.0.*</AssemblyVersion>
+		<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+		<DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
+		<Description>Extract files form Intel OMF85 library and disassemble them</Description>
+		<OutDir>$(SolutionDir)Install\$(Platform)-$(Configuration)-$(TargetFramework)\</OutDir>
+		<IntermediateOutputPath>$(SolutionDir)Build\$(MSBuildProjectName)\$(Platform)-$(Configuration)\</IntermediateOutputPath>
+	</PropertyGroup>
+	<Target Name="GetVersion" BeforeTargets="BeforeBuild">
+		<Message Text="Get Version" />
+		<Exec Command="..\scripts\getversion -s" ConsoleToMSBuild="true">
+			<Output TaskParameter="ConsoleOutput" PropertyName="GIT_VERSION" />
+		</Exec>
+		<PropertyGroup>
+			<FileVersion>$([System.DateTime]::UtcNow.ToString(yyyy.MMdd.HHmm.ssf))</FileVersion>
+			<InformationalVersion>$(GIT_VERSION)</InformationalVersion>
+			<Authors>Mark Ogden</Authors>
+			<Copyright>$(Authors)</Copyright>
+		</PropertyGroup>
+	</Target>
+	
+
+</Project>
