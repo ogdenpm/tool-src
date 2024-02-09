@@ -1,4 +1,4 @@
-﻿/****************************************************************************
+/****************************************************************************
  *                                                                          *
  *  disIntelLib: Disassemble Intel OMF85 library                            *
  *  Copyright (C) 2020 Mark Ogden <mark.pm.ogden@btinternet.com>            *
@@ -20,36 +20,37 @@
  *                                                                          *
  ****************************************************************************/
 
-using System.Diagnostics;
+using GitVersionInfo;
 using System.Reflection;
-using System;
+using System.Runtime.InteropServices;
 
 
 
-namespace GitVersionInfo
-{
-    public partial class VersionInfo
-    {
-        public static void showVersion(bool full)
-        {
+// General Information about an assembly is controlled through the following 
+// set of attributes. Change these attribute values to modify the information
+// associated with an assembly.
+[assembly: AssemblyTitle("disIntelLib")]
+[assembly: AssemblyDescription("Disassemble Intel OMF85 library files")]
 #if DEBUG
-            string build = "Debug build";
+[assembly: AssemblyConfiguration("debug")]
 #else
-            string build = "Build";
+[assembly: AssemblyConfiguration("")]
 #endif
-            Assembly assembly = Assembly.GetExecutingAssembly();
-            FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(assembly.Location);
+[assembly: AssemblyCompany("Mark Ogden")]
+[assembly: AssemblyProduct("disIntelLib")]
+[assembly: AssemblyCopyright("Mark Ogden")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+
+[assembly: AssemblyInformationalVersion(VersionInfo.GIT_VERSION)]
+
+// Setting ComVisible to false makes the types in this assembly not visible 
+// to COM components.  If you need to access a type in this assembly from 
+// COM, set the ComVisible attribute to true on that type.
+[assembly: ComVisible(false)]
 
 
-            Console.WriteLine($"{fvi.ProductName} (C) {fvi.LegalCopyright} {fvi.ProductVersion}");
-            if (full)
-            {
-                Console.WriteLine(assembly.GetCustomAttribute<AssemblyDescriptionAttribute>().Description);
-                Console.Write($"{build}: {fvi.FileMajorPart}-{fvi.FileMinorPart / 100:D2}-{fvi.FileMinorPart % 100:D2}");
-                Console.Write($" {fvi.FileBuildPart / 100:D2}:{fvi.FileBuildPart % 100:D2}");
-                Console.WriteLine($":{fvi.FilePrivatePart / 100:D2}");
-                Console.WriteLine("Support email: support@mark-ogden.uk");
-            }
-        }
-    }
-}
+[assembly: Guid("4032347d-438d-4a3f-8d8b-fe8d9b39f5cc")]
+
+[assembly: AssemblyVersion("1.0.*")]
+[assembly: AssemblyFileVersion(VersionInfo.GIT_FILEVER)]

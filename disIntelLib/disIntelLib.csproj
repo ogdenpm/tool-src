@@ -11,8 +11,7 @@
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <Deterministic>true</Deterministic>
-    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <Deterministic>false</Deterministic>
     <PublishUrl>publish\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
@@ -25,15 +24,17 @@
     <MapFileExtensions>true</MapFileExtensions>
     <ApplicationRevision>0</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
+    <IntermediateOutputPath>$(SolutionDir)Build\$(AssemblyName)\$(Platform)-$(Configuration)\</IntermediateOutputPath>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\Build\disIntelLib\AnyCPU-Debug\</OutputPath>
+    <OutputPath>..\Install\AnyCPU-Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -43,7 +44,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>..\Build\disIntelLib\AnyCPU-Release\</OutputPath>
+    <OutputPath>..\Install\AnyCPU-Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -86,10 +87,9 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy /B $(TargetPath) $(SolutionDir)\Install\$(PlatformName)-$(ConfigurationName) &amp;
-if exist $(SolutionDir)install.cfg pushd "$(ProjectDir)" &amp; call $(SolutionDir)Scripts\install.cmd $(TargetPath) $(SolutionDir)&amp; ;copy /B GIT_VERSION_INFO+,, GIT_VERSION_INFO &amp; popd</PostBuildEvent>
+    <PostBuildEvent>if exist $(SolutionDir)install.cfg pushd "$(ProjectDir)" &amp; call $(SolutionDir)Scripts\install.cmd $(TargetPath) $(SolutionDir)&amp; popd</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PreBuildEvent>pushd "$(ProjectDir)" &amp; call $(SolutionDir)Scripts\version.cmd  . version.g.cs &amp; popd</PreBuildEvent>
+    <PreBuildEvent>pushd "$(ProjectDir)" &amp; call $(SolutionDir)Scripts\getversion.cmd  -W &amp; popd</PreBuildEvent>
   </PropertyGroup>
 </Project>
