@@ -23,6 +23,7 @@
 using System.Diagnostics;
 using System.Reflection;
 using System;
+using System.Security.Principal;
 
 
 
@@ -43,11 +44,9 @@ namespace GitVersionInfo
 
             Console.WriteLine($"{fvi.ProductName} (C) {fvi.LegalCopyright} {fvi.ProductVersion}");
             if (full)
-            {
+            {            
                 Console.WriteLine(assembly.GetCustomAttribute<AssemblyDescriptionAttribute>().Description);
-                Console.Write($"{build}: {fvi.FileMajorPart}-{fvi.FileMinorPart / 100:D2}-{fvi.FileMinorPart % 100:D2}");
-                Console.Write($" {fvi.FileBuildPart / 100:D2}:{fvi.FileBuildPart % 100:D2}");
-                Console.WriteLine($":{fvi.FilePrivatePart / 100:D2}");
+                Console.WriteLine($"{build}: {GIT_CHKDATE}");
                 Console.WriteLine("Support email: support@mark-ogden.uk");
             }
         }

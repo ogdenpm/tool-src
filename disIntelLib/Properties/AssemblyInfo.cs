@@ -53,4 +53,4 @@ using System.Runtime.InteropServices;
 [assembly: Guid("4032347d-438d-4a3f-8d8b-fe8d9b39f5cc")]
 
 [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyFileVersion(VersionInfo.GIT_FILEVER)]
+[assembly: AssemblyFileVersion("0.0.0.0")]
