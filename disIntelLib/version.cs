@@ -40,14 +40,16 @@ namespace GitVersionInfo
 #endif
             Assembly assembly = Assembly.GetExecutingAssembly();
             FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(assembly.Location);
+            var buildDate = System.IO.File.GetLastWriteTime(assembly.Location);
 
-
-            Console.WriteLine($"{fvi.ProductName} (C) {fvi.LegalCopyright} {fvi.ProductVersion}");
+            Console.WriteLine($"{fvi.ProductName} {fvi.LegalCopyright} {fvi.ProductVersion}");
             if (full)
             {            
                 Console.WriteLine(assembly.GetCustomAttribute<AssemblyDescriptionAttribute>().Description);
-                Console.WriteLine($"{build}: {GIT_CHKDATE}");
+                Console.WriteLine($"{build}: {buildDate: yyyy-MM-dd hh:mm:ss}");
                 Console.WriteLine("Support email: support@mark-ogden.uk");
+ 
+ 
             }
         }
     }

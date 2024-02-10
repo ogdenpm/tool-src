@@ -3,6 +3,5 @@
 namespace GitVersionInfo {
   public partial class VersionInfo {
     public const string GIT_VERSION = "@V@";
-    public const string GIT_CHKDATE = "@D@";
   }
 }

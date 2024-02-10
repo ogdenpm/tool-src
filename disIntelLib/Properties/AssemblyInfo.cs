@@ -38,7 +38,7 @@ using System.Runtime.InteropServices;
 #endif
 [assembly: AssemblyCompany("Mark Ogden")]
 [assembly: AssemblyProduct("disIntelLib")]
-[assembly: AssemblyCopyright("Mark Ogden")]
+[assembly: AssemblyCopyright("(C) Mark Ogden")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
