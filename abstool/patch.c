@@ -28,7 +28,8 @@
 /*
  * The optional patch file has two modes, PATCH and APPEND, with PATCH being the initial mode
  *
- * Unless part of a string, blanks are ignored and a punctuation symbol ends line processing
+ * Unless part of a string, blanks are ignored and other than $$ a punctuation symbol
+ * ends line processing
  *
  * In PATCH mode each line starts with a patch address followed by any number of patch data values.
  * In APPEND mode, only patch data values are supported; the patch address is implicit
@@ -40,11 +41,13 @@
  * Patch data values can be either of the following
  *
  * 'APPEND'                  switch to APPEND mode
+ * 
  * value ['x' repeatCnt]     where repeatCnt is a hex number and value is one of
  *       number       hex number, no prefix/suffix
  *       'string'     C string escapes \a \b \f \n \r \t \v \' \" \\ \xnn and \nnn are supported
  *       -            set to uninitialised. (error in APPEND mode)
  *       =            leave unchanged i.e. skip the bytes. (error in APPEND mode)
+ *       '$START'     patches with the two byte start address
  *
  * Meta token assignments
  * ======================
@@ -85,9 +88,9 @@
 enum { PATCHADDRESS, PATCHVAL, APPENDVAL, METAOPT };
 int context    = PATCHADDRESS;
 
-char *tokens[] = { "APPEND", "AOMF51", "AOMF85", "AOMF96", "ISISBIN", "HEX", "IMAGE", "TARGET",
-                   "SOURCE", "NAME",   "DATE",   "START",  "LOAD",    "TRN", "VER",   "MAIN",
-                   "MASK",   "=",      "-",      "HEXVAL", "STRING",  "EOL", "ERROR" };
+char *tokens[] = { "APPEND", "AOMF51", "AOMF85", "AOMF96", "ISISBIN", "HEX",    "IMAGE", "TARGET",
+                   "SOURCE", "NAME",   "DATE",   "START",  "LOAD",    "TRN",    "VER",   "MAIN",
+                   "MASK",   "$START", "=",      "-",      "HEXVAL",  "STRING", "EOL",   "ERROR" };
 
 typedef struct {
     uint8_t type;
@@ -135,13 +138,14 @@ char *parseToken(char *s, value_t *val) {
 
     s = skipSpc(s);
 
-    if (isalpha(*s)) {
+    if (isalpha(*s) || *s == '$') {
         int i, j;
-        for (i = 0; i < 7 && isalnum(s[i]); i++)
+        token[0] = toupper(s[0]);
+        for (i = 1; i < 7 && isalnum(s[i]); i++)
             token[i] = toupper(s[i]);
         token[i] = '\0';
 
-        for (j = APPEND; j <= MASK; j++)
+        for (j = APPEND; j <= STARTADDR; j++)
             if (strcmp(tokens[j - APPEND], token) == 0) {
                 val->type = j;
                 return s + i;
@@ -251,6 +255,7 @@ char *getValue(char *s, value_t *val) {
     case STRING:
     case SKIP:
     case DEINIT:
+    case STARTADDR:
         s = getRepeat(s, val);
         break;
     case TARGET:
@@ -307,6 +312,9 @@ char *getValue(char *s, value_t *val) {
 unsigned fill(image_t *image, int addr, value_t *val, bool appending) {
     if (addr < image->low)
         image->low = addr;
+    if (val->type == STARTADDR) // check if writing a word
+        val->repeatCnt *= 2;
+
     for (int i = 0; i < val->repeatCnt; i++) {
         if (appending) {
             if (addr >= MAXMEM + MAXAPPEND) {
@@ -319,6 +327,8 @@ unsigned fill(image_t *image, int addr, value_t *val, bool appending) {
         }
 
         switch (val->type) {
+        case STARTADDR:
+            val->hval = i % 2 == 0 ? image->mStart % 256 : image->mStart / 256;
         case HEXVAL:
             image->mem[addr]   = (uint8_t)val->hval;
             image->use[addr++] = appending ? APPEND : SET;
@@ -428,6 +438,7 @@ void patchfile(char *fname, image_t *image) {
             case STRING:
             case SKIP:
             case DEINIT:
+            case STARTADDR:
                 if (addr < 0) {
                     strcpy(val.str, "Patch data with no patch address");
                     val.type = ERROR;

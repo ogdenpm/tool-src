@@ -49,7 +49,8 @@ enum {
     TRN,
     VER,
     MAIN,
-    MASK,       
+    MASK,
+    STARTADDR,
     SKIP,       // patch values
     DEINIT,
     HEXVAL,
