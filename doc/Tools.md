@@ -28,7 +28,7 @@ If outfile is omitted, only a summary of the infile is produced
 
 The optional patch file has contains lines which are interpreted int one of two modes, PATCH and APPEND, with PATCH being the initial mode
 
-Unless part of a string, blanks are ignored and a punctuation symbol ends line processing
+Unless part of a string, blanks are ignored and other than as part of $START, a punctuation symbol ends line processing
 
 In PATCH mode each line starts with a patch address followed by any number of patch data values.
 In APPEND mode, only patch data values are supported; the patch address is implicit
@@ -45,6 +45,7 @@ value ['x' repeatCnt] where repeatCnt is a hex number and value is one of
     'string'  C string escapes \a \b \f \n \r \t \v \' \" \\ \xnn and \nnn are supported
      -        set to uninitialised. (error in APPEND mode)
      =        leave unchanged i.e. skip the bytes. (error in APPEND mode)
+     $START   patches two bytes with the start address of the program
 ```
 
 #### Meta token assignments
