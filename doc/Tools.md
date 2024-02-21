@@ -28,9 +28,9 @@ If outfile is omitted, only a summary of the infile is produced
 
 The optional patch file has contains lines which are interpreted int one of two modes, PATCH and APPEND, with PATCH being the initial mode
 
-Unless part of a string, blanks are ignored and other than as part of $START, a punctuation symbol ends line processing
+Numbers are all treated as hex and unless part of a string, blanks are ignored and punctuation ends a line, except for $ when used in $START or $number.
 
-In PATCH mode each line starts with a patch address followed by any number of patch data values.
+In PATCH mode each line starts with a patch address followed by any number of patch data values. The patch address is a 16 bit value and can be entered as a number, $number or $START, see below.
 In APPEND mode, only patch data values are supported; the patch address is implicit
 
 Any number of meta token assignments (see below) can be interspersed between patch values
@@ -41,11 +41,12 @@ Patch data values can be either of the following
 ```
 'APPEND'     switch to APPEND mode, rest of line is interpreted as per APPEND mode
 value ['x' repeatCnt] where repeatCnt is a hex number and value is one of
-	hexvalue
+	 number   a hex number
     'string'  C string escapes \a \b \f \n \r \t \v \' \" \\ \xnn and \nnn are supported
      -        set to uninitialised. (error in APPEND mode)
      =        leave unchanged i.e. skip the bytes. (error in APPEND mode)
-     $START   patches two bytes with the start address of the program
+     $START   patches with the two byte start address of the program
+     $number  patches with a two byte hex number  
 ```
 
 #### Meta token assignments
@@ -61,7 +62,7 @@ where metaToken is one of
   DATE    sets the date field for AOM96 otherwise ignored
   TRN     sets the TRN value for AOMFxx otherwise ignored. Error if invalid
   VER     sets the VER value for AOMF85 otherwise ignored
-  MAIN    sets the MAIN module value for AOMF85 & AOMF96 (bit 0 only use)
+  MAIN    sets the MAIN module value for AOMF85 & AOMF96 (bit 0 only used)
   MASK    sets the MASK value f or AOMF51 (low 4 bits only)
 and value is one of
   fileFormat, used for TARGET and SOURCE. Vaild values are
