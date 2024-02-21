@@ -23,8 +23,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define MAXMEM  0x10000
-#define MAXAPPEND   256
+#define MAXMEM  0x10000     // max image size
+#define MAXAPPEND   256     // allow for 2 x 128 byte sectors of appended data even after MAXMEM 
 
 
 /* types for values */
@@ -53,7 +53,8 @@ enum {
     STARTADDR,
     SKIP,       // patch values
     DEINIT,
-    HEXVAL,
+    HEXBYTE,
+    HEXWORD,
     STRING,
     EOL,
     ERROR,

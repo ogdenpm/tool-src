@@ -32,6 +32,7 @@
  * ends line processing
  *
  * In PATCH mode each line starts with a patch address followed by any number of patch data values.
+ * The address is treated as a 16 bit value, a simple hex number or $number or $START can be used
  * In APPEND mode, only patch data values are supported; the patch address is implicit
  *
  * Any number of meta token assignments (see below) can be interspersed between patch values
@@ -47,7 +48,8 @@
  *       'string'     C string escapes \a \b \f \n \r \t \v \' \" \\ \xnn and \nnn are supported
  *       -            set to uninitialised. (error in APPEND mode)
  *       =            leave unchanged i.e. skip the bytes. (error in APPEND mode)
- *       '$START'     patches with the two byte start address
+ *       $START       patches with the two byte start address
+ *       $number      patches with the 16bit number
  *
  * Meta token assignments
  * ======================
@@ -90,7 +92,7 @@ int context    = PATCHADDRESS;
 
 char *tokens[] = { "APPEND", "AOMF51", "AOMF85", "AOMF96", "ISISBIN", "HEX",    "IMAGE", "TARGET",
                    "SOURCE", "NAME",   "DATE",   "START",  "LOAD",    "TRN",    "VER",   "MAIN",
-                   "MASK",   "$START", "=",      "-",      "HEXVAL",  "STRING", "EOL",   "ERROR" };
+                   "MASK",   "$START", "=",      "-",      "HEXBYTE",  "HEXWORD", "STRING", "EOL",   "ERROR" };
 
 typedef struct {
     uint8_t type;
@@ -151,8 +153,14 @@ char *parseToken(char *s, value_t *val) {
                 return s + i;
             }
     }
-    if (isxdigit(*s)) {
-        val->type = HEXVAL;
+
+    if (isxdigit(*s) || (*s == '$' && isxdigit(s[1]))) {
+        if (*s == '$') {
+            val->type = HEXWORD;
+            s++;
+        } else
+            val->type = HEXBYTE;
+
         val->hval = 0;
         while (isxdigit(*s)) {
             val->hval = val->hval * 16 + (isdigit(*s) ? *s - '0' : tolower(*s) - 'a' + 10);
@@ -226,7 +234,7 @@ char *getRepeat(char *s, value_t *val) {
     s = skipSpc(s);
     if (tolower(*s) == 'x') {
         s = parseToken(s + 1, &rept);
-        if (rept.type == HEXVAL)
+        if (rept.type == HEXBYTE)
             val->repeatCnt = rept.hval;
         else {
             val->type = ERROR;
@@ -251,7 +259,8 @@ char *getValue(char *s, value_t *val) {
     switch (val->type) {
     case APPEND:
         break;
-    case HEXVAL:
+    case HEXBYTE:
+    case HEXWORD:
     case STRING:
     case SKIP:
     case DEINIT:
@@ -281,7 +290,7 @@ char *getValue(char *s, value_t *val) {
         break;
     case START:
     case LOAD:
-        if (opt.type != HEXVAL || opt.hval > 0xffff) {
+        if (opt.type != HEXBYTE || opt.hval > 0xffff) {
             sprintf(val->str, "Invalid value for %s", tokens[val->type - APPEND]);
             val->type = ERROR;
         } else
@@ -291,7 +300,7 @@ char *getValue(char *s, value_t *val) {
     case VER:
     case MAIN:
     case MASK:
-        if (opt.type != HEXVAL || opt.hval > 0xff) {
+        if (opt.type != HEXBYTE || opt.hval > 0xff) {
             sprintf(val->str, "Invalid value for %s", tokens[val->type - APPEND]);
             val->type = ERROR;
         } else
@@ -310,10 +319,15 @@ char *getValue(char *s, value_t *val) {
 }
 
 unsigned fill(image_t *image, int addr, value_t *val, bool appending) {
+    uint8_t bytepair[2];
     if (addr < image->low)
         image->low = addr;
-    if (val->type == STARTADDR) // check if writing a word
+    bytepair[0] = (uint8_t)val->hval;
+    if (val->type == HEXWORD) { // check if writing a word
         val->repeatCnt *= 2;
+        bytepair[1] = (uint8_t)(val->hval / 256);
+    } else
+        bytepair[1] = (uint8_t)val->hval;
 
     for (int i = 0; i < val->repeatCnt; i++) {
         if (appending) {
@@ -327,10 +341,9 @@ unsigned fill(image_t *image, int addr, value_t *val, bool appending) {
         }
 
         switch (val->type) {
-        case STARTADDR:
-            val->hval = i % 2 == 0 ? image->mStart % 256 : image->mStart / 256;
-        case HEXVAL:
-            image->mem[addr]   = (uint8_t)val->hval;
+        case HEXWORD:
+        case HEXBYTE:
+            image->mem[addr]   = bytepair[i % 2];
             image->use[addr++] = appending ? APPEND : SET;
             break;
         case SKIP:
@@ -429,16 +442,20 @@ void patchfile(char *fname, image_t *image) {
             case MASK:
                 image->meta[val.type - START] = val.hval;
                 break;
-
-            case HEXVAL:
+            case STARTADDR:
+                val.hval = image->mStart;
+                val.type = HEXWORD;
+            case HEXBYTE:
+            case HEXWORD:
                 if (addr < 0) {
                     addr = val.hval;
+                    if (val.repeatCnt != 1)
+                        error("Repeat count invalid for patch address");
                     break;
                 }
             case STRING:
             case SKIP:
             case DEINIT:
-            case STARTADDR:
                 if (addr < 0) {
                     strcpy(val.str, "Patch data with no patch address");
                     val.type = ERROR;
