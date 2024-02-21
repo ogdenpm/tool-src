@@ -149,7 +149,7 @@ void unpack(char *fname) {
 }
 
 
-__declspec(noreturn) void usage(char *fmt, ...) {
+_Noreturn void usage(char *fmt, ...) {
     if (fmt) {
         va_list args;
         va_start(args, fmt);
