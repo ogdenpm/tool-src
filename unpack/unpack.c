@@ -23,7 +23,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#ifdef _MSC_VER
 #include <direct.h>
+#define mkdir(p, m) _mkdir(p)
+#else
+#include <unistd.h>
+#include <limits.h>
+#define _MAX_PATH PATH_MAX
+#define _MAX_FNAME PATH_MAX
+#endif
 #include <string.h>
 #include <sys/stat.h>
 #include <stdbool.h>
@@ -64,13 +72,13 @@ void addNestedFile(char *file) {
 char *defaultIn() {
     char path[_MAX_PATH + 1];
     static char src[_MAX_FNAME];
-    if (_getcwd(path, _MAX_PATH + 1) == NULL) {
+    if (getcwd(path, _MAX_PATH + 1) == NULL) {
         fprintf(stderr, "problem finding current directory\n");
         exit(1);
     }
     char *parent = path;
     char *s;
-    while (s = strpbrk(parent, "\\/:"))
+    while ((s = strpbrk(parent, "\\/:")))
         parent = s + 1;
     strcpy(src, parent);
     strcat(src, "_all.src");
@@ -86,16 +94,16 @@ FILE *newFile(char *parent, char *fname) {
     else {
         strcpy(path, parent);                   // assume start directory is same as parent
         char *fpart = path;
-        for (char *s = path; s = strpbrk(s, "\\/"); s++)
+        for (char *s = path; (s = strpbrk(s, "\\/")); s++)
             fpart = s + 1;
         strcpy(fpart, fname);
     }
 
     if ((fp = fopen(path, "wt")) == NULL) {     // try to create
         // see if the problem is missing directories
-        for (char *s = path; s = strpbrk(s, "\\/"); s++) {
+        for (char *s = path; (s = strpbrk(s, "\\/")); s++) {
             *s = 0;
-            mkdir(path);
+            mkdir(path, 0666);
             *s = '/';
         }
         fp = fopen(path, "wt");
@@ -132,9 +140,9 @@ void unpack(char *fname) {
                 if (fpout != stdout)
                     fclose(fpout);
                 char *s;
-                for (s = line + 1; s = strchr(s, '`'); s++)   // replace escaped spaces
+                for (s = line + 1; (s = strchr(s, '`')); s++)   // replace escaped spaces
                     *s = ' ';
-                if (s = strchr(line + 1, '\n'))
+                if ((s = strchr(line + 1, '\n')))
                     *s = 0;
                 strcpy(curfile, line + 1);
                 fpout = newFile(fname, curfile);
