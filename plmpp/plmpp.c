@@ -422,12 +422,12 @@ void doControl(char *line)
         else if (tok == ENDIF) {
             if (--ifDepth < skippingDepth)
                 skipping = 0;
-        }
-        else if (ifDepth == skippingDepth && inIFpart)
+        } else if (ifDepth == skippingDepth && inIFpart) {
             if (tok == ELSE)
                 skipping = 0;
             else if (tok == ELSEIF)
                 skipping = (parseIfCond() & 1) == 0;
+        }
         *line = 0;
         return;
     }

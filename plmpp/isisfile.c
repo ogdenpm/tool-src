@@ -78,7 +78,7 @@ static void mapIsisName(const char *isisName, char *mappedName)
 			drv = isisName[2] - '0';
 		}
 
-		if (path = xlt_device(drv))
+		if ((path = xlt_device(drv)))
 			strcpy(mappedName, path);
 		else {
 			if (isiswarning[drv]++ == 0)
@@ -94,7 +94,7 @@ static void mapIsisName(const char *isisName, char *mappedName)
 			}
 		}
 		s = strchr(mappedName, 0);
-		while (*s++ = tolower(*fname++))
+		while ((*s++ = tolower(*fname++)))
 			;
 	}
 }
