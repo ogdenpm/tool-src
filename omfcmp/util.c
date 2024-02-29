@@ -55,13 +55,13 @@ void *xcalloc(size_t len, size_t size)
 
 int pstrEqu(byte *s, byte *t)
 {
-    return (*s == *t && strncmp(s + 1, t + 1, *s) == 0);
+    return (*s == *t && strncmp((char *)s + 1, (char *)t + 1, *s) == 0);
 }
 
 int pstrCmp(byte *s, byte *t)
 {
     int cmp;
-    if ((cmp = strncmp(s + 1, t + 1, *s <= *t ? *s : *t)) == 0)
+    if ((cmp = strncmp((char *)s + 1, (char *)t + 1, *s <= *t ? *s : *t)) == 0)
         cmp = *s - *t;
     return cmp;
 }

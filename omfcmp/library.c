@@ -50,7 +50,7 @@ library_t *newLibrary(omf_t *omf)		// returns the list of library modules and lo
     seekRecord(omf, loc);
     getRecord(omf);
     for (i = 0; i < count; i++)
-        library->names[i] = getName(omf);
+        library->names[i] = (char *)getName(omf);
     getRecord(omf);
     for (i = 0; i < count; i++)
         library->locations[i] = getLoc(omf);
@@ -87,7 +87,7 @@ void cmpLibrary(file_t *left, file_t *right)
     prevk = k = 0;
     for (i = 0; i < ll->count; i++) {
         for (j = 0; j < rl->count; j++) {
-            if (pstrEqu(ll->names[i], rl->names[k]))
+            if (pstrEqu((byte *)ll->names[i], (byte *)rl->names[k]))
                 break;
             k = (k + 1) % rl->count;
         }
@@ -114,7 +114,7 @@ void cmpLibrary(file_t *left, file_t *right)
     k = 0;
     for (i = 0; i < rl->count; i++) {
         for (j = 0; j < ll->count; j++) {
-            if (pstrEqu(rl->names[i], ll->names[k]))
+            if (pstrEqu((byte *)rl->names[i], (byte *)ll->names[k]))
                 break;
             k = (k + 1) % ll->count;
         }

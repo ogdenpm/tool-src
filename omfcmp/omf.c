@@ -32,7 +32,7 @@ omf_t *newOMF(file_t *fi, int mod, int start, int end)
     if (mod < 0)
         modStr[0] = 0;
     else
-        sprintf(modStr, "[%d]", mod);
+        sprintf(modStr, "[%d]", mod & 0xffff);
 
     omf = (omf_t *)xcalloc(1, sizeof(omf_t));
     omf->name = (char *)xmalloc(strlen(fi->name) + strlen(modStr)  + 1);

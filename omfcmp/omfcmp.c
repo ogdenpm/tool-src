@@ -246,7 +246,7 @@ void modhdr(omf_t *omf, module_t *mod)
     seg_t *seg;
     byte segId;
 
-    mod->name = getName(omf);
+    mod->name = (char *)getName(omf);
     mod->compiler[0] = getByte(omf);
     mod->compiler[1] = getByte(omf);
     while (!atEndOfRecord(omf)) {
@@ -360,12 +360,12 @@ module_t *newModule(omf_t *omf)
     module_t *mod;
 
     mod = (module_t *)xcalloc(1, sizeof(module_t));
-    mod->segs[0].name = "\3ABS";
-    mod->segs[1].name = "\4CODE";
-    mod->segs[2].name = "\4DATA";
-    mod->segs[3].name = "\5STACK";
-    mod->segs[4].name = "\6MEMORY";
-    mod->segs[255].name = "\2//";
+    mod->segs[0].name = (byte *)"\3ABS";
+    mod->segs[1].name = (byte *)"\4CODE";
+    mod->segs[2].name = (byte *)"\4DATA";
+    mod->segs[3].name = (byte *)"\5STACK";
+    mod->segs[4].name = (byte *)"\6MEMORY";
+    mod->segs[255].name = (byte *)"\2//";
 
 
     seekRecord(omf, 0);
@@ -483,13 +483,13 @@ void diffPublics(module_t *lm, byte lseg, module_t *rm, byte rseg)
             cmp = pstrCmp(lp->items[i].name, rp->items[j].name);
         if (cmp < 0) {
             printSegHeader(ls, rs, ERROR);
-            printPstrPair(lp->items[i].name, "\x06------");
+            printPstrPair(lp->items[i].name, (byte *)"\x06------");
             printf(" - Public missing\n");
             i++;
         }
         else if (cmp > 0) {
             printSegHeader(ls, rs, ERROR);
-            printPstrPair("\x06------",rp->items[j].name);
+            printPstrPair((byte *)"\x06------",rp->items[j].name);
             printf(" - Public missing\n");
             j++;
         }
@@ -706,7 +706,7 @@ int diffExternals(module_t *lm, module_t *rm, int result)
 
         if (j == rm->externals.cnt) {
             if (result == 1) printf("\nExternals:\n");
-            printPstrPair(lm->externals.items[i].name, "\x06------");
+            printPstrPair(lm->externals.items[i].name, (byte *)"\x06------");
             printf(" - External missing\n");
             result = 0;
         } else
@@ -716,7 +716,7 @@ int diffExternals(module_t *lm, module_t *rm, int result)
     for (j = 0; j < rm->externals.cnt; j++)
         if (!(rm->externals.items[j].status & CHECKED)) {
             if (result == 1) printf("\nExternals:\n");
-            printPstrPair("\06------", rm->externals.items[j].name);
+            printPstrPair((byte *)"\06------", rm->externals.items[j].name);
             printf(" - External missing\n");
             result = 0;
             rm->externals.items[j].status |= CHECKED;
@@ -742,7 +742,7 @@ int diffModule(module_t *lm, module_t *rm)
 
     printf(" %.*s ", lm->name[0], lm->name + 1);
     printCompiler(lm->compiler[0], lm->compiler[1]);
-    if (!pstrEqu(lm->name, rm->name)) {
+    if (!pstrEqu((byte *)lm->name, (byte *)rm->name)) {
         printf(" : %.*s", rm->name[0], rm->name + 1);
         result = 0;
     }
@@ -763,7 +763,7 @@ int diffModule(module_t *lm, module_t *rm)
                     putchar('\n');
                     result = 0;
                 }
-                printPstrPair(lm->segs[i].name, "\x06------");
+                printPstrPair(lm->segs[i].name, (byte *)"\x06------");
                 printf(" - Segment missing\n");
                 lm->segs[i].status |= ERROR + CHECKED;
             }
@@ -788,7 +788,7 @@ int diffModule(module_t *lm, module_t *rm)
     for (j = 1; j <= rm->maxSeg; j++)
         if (rm->segs[i].status && (rm->segs[j].status & CHECKED) == 0) {
             putchar('\n');
-            printPstrPair("\x06------", rm->segs[j].name);
+            printPstrPair((byte *)"\x06------", rm->segs[j].name);
             printf(" - Segment missing");
             if (j == 4 && rm->segs[j].length == 0) {
                 printf(" - benign as length 0");
@@ -813,7 +813,7 @@ int diffModule(module_t *lm, module_t *rm)
         printf(" : %s", rm->modType ? "Main" : "Non main");
         if (rm->modType || rm->startSeg || rm->startOffset)
             printf(" %.*s:%04X", rm->segs[rm->startSeg].name[0], rm->segs[rm->startSeg].name + 1, rm->startOffset);
-        if (lm->modType == 0 && (lm->startSeg || lm->startOffset) || rm->modType == 0 && (rm->startSeg || rm->startOffset))
+        if ((lm->modType == 0 && (lm->startSeg || lm->startOffset)) || (rm->modType == 0 && (rm->startSeg || rm->startOffset)))
             printf(" - benign non compliance");
         if (lm->modType != rm->modType || (lm->modType == 1 && lm->startSeg != rm->startSeg && lm->startOffset != rm->startOffset))
             result = 0;
