@@ -26,7 +26,9 @@
 
 #define HEXBYTES  16
 
-
+#ifndef _MSC_VER
+#define stricmp strcasecmp
+#endif
 
 _Noreturn void usage(char *fmt, ...);
 _Noreturn void error(char *fmt, ...);

@@ -19,13 +19,16 @@
  *                                                                          *
  ****************************************************************************/
 
-//#include "abstool.h"
-#include "image.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+//#include "abstool.h"
+#include "image.h"
+#ifndef min
+#define min(a,b)   ((a) <= (b) ? (a) : (b))
+#endif
 
 /* extra output file type */
 enum { BAD = -2, BADCRC, VALID };
@@ -124,7 +127,8 @@ int readHex(FILE *fp) {
 int readBin(FILE *fp) {
     recLen  = getword(fp);
     recAddr = getword(fp);
-    fread(record, 1, recLen, fp);
+    if (fread(record, 1, recLen, fp) != recLen) // chkbin checks
+        error("Failed to read bin record");
     return VALID;
 }
 
@@ -160,7 +164,6 @@ int fileType(FILE *fp, image_t *image) {
         memcpy(image->name, p, min(*p, 40) + 1); // name
         p += *p + 1;
         image->mTrn = *p++;
-        uint8_t trn = record[record[0] + 1];
 
         if (image->mTrn >= 0xfd) {
             validOMF = validOMF51;

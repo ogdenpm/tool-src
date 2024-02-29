@@ -19,11 +19,16 @@
  *                                                                          *
  ****************************************************************************/
 
-#include "abstool.h"
 #include "image.h"
 #include <memory.h>
 #include <stdio.h>
 #include <stdlib.h>
+// abstool.h should be after std includes
+#include "abstool.h"
+
+#ifndef min
+#define min(a,b)   ((a) <= (b) ? (a) : (b))
+#endif
 
 #define LXISP 0x31
 #define JMP   0xc3

@@ -19,9 +19,6 @@
  *                                                                          *
  ****************************************************************************/
 
-#include "abstool.h"
-#include "image.h"
-#include "showversion.h"
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -29,6 +26,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+// local includes after std includes
+#include "abstool.h"
+#include "image.h"
+#include "showversion.h"
 
 #ifdef _WIN32
 #define DIRSEP "\\/"

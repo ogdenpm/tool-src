@@ -19,12 +19,16 @@
  *                                                                          *
  ****************************************************************************/
 
-#include "abstool.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+// abstool.h should be after std includes
+#include "abstool.h"
 
+#ifndef min
+#define min(a,b)   ((a) <= (b) ? (a) : (b))
+#endif
 /*
  * The optional patch file has two modes, PATCH and APPEND, with PATCH being the initial mode
  *
@@ -278,7 +282,7 @@ char *getValue(char *s, value_t *val) {
     case NAME:
     case DATE:
         if (opt.type == STRING) {
-            val->str[0] = min(opt.str[0], opt.str[0] > val->type == NAME ? 40 : 64);
+            val->str[0] = min(opt.str[0], val->type == NAME ? 40 : 64);
             memcpy(val->str, opt.str, opt.str[0] + 1);
         } else {
             if (opt.type == ERROR)
@@ -459,7 +463,7 @@ void patchfile(char *fname, image_t *image) {
                 if (addr < 0) {
                     strcpy(val.str, "Patch data with no patch address");
                     val.type = ERROR;
-                } else if (append && val.type == SKIP || val.type == DEINIT) {
+                } else if (append && (val.type == SKIP || val.type == DEINIT)) {
                     sprintf(val.str, "%s not valid in append mode", tokens[val.type - APPEND]);
                     val.type = ERROR;
                 } else
