@@ -26,7 +26,11 @@
 #include <stdbool.h>
 #include <string.h>
 #include <ctype.h>
+#ifdef _MSC_VER
 #include <io.h>
+#else
+#include <unistd.h>
+#endif
 #include "showVersion.h"
 
 #define MAXNAME  31
@@ -96,8 +100,8 @@ void *safeRealloc(void *p, size_t size) {
 void addRename(const char *oldname, const char *newname, option_t *options) {
     if (options->renames.cnt % CHUNK == 0)
         options->renames.renameList = safeRealloc(options->renames.renameList, (options->renames.cnt + CHUNK) * sizeof(rename_t));
-    options->renames.renameList[options->renames.cnt].oldname = oldname;
-    options->renames.renameList[options->renames.cnt++].newname = newname;
+    options->renames.renameList[options->renames.cnt].oldname = (uint8_t const *)oldname;
+    options->renames.renameList[options->renames.cnt++].newname = (uint8_t const *)newname;
 
 }
 
@@ -194,7 +198,7 @@ const char *parseName(const char **src) {
     name[0] = nameLen;      // make pascal style, a zero length will return ""
     name[1 + nameLen] = 0;
     *src = s;
-    return _strdup(name);
+    return strdup(name);
 }
 
 // parse a number, updates s to point to breaking char if parses is ok
@@ -513,16 +517,18 @@ bool rewriteContent(FILE *fpout, uint8_t *recBuf, int repCnt, const option_t *op
 // name is in pascal string format
 const uint8_t *getNewName(const uint8_t *name, uint8_t rtype, const option_t *options) {
     unsigned libfn;
-    if (rtype == 'P' && options->lflag && sscanf(name, "\x06@P%4d", &libfn) == 1 && 0 <= libfn && libfn <= 116)
-        return "";
+    if (rtype == 'P' && options->lflag && sscanf((char *)name, "\x06@P%4d", &libfn) == 1 && 0 <= libfn && libfn <= 116)
+        return (uint8_t  const *)"";
 
     for (int i = 0; i < options->renames.cnt; i++)
-        if (memcmp(name, options->renames.renameList[i].oldname, *name + 1) == 0) // name sure name matches
+        if (memcmp(name, options->renames.renameList[i].oldname, *name + 1) ==  0) { // name sure name matches
             if (options->renames.renameList[i].newname[0] == 0 && rtype == 'E') {
-                fprintf(stderr, "Warning: Record %d - cannot delete external name %.*s\n", inRecCnt, *name, name + 1);
+                fprintf(stderr, "Warning: Record %d - cannot delete external name %.*s\n", inRecCnt,
+                        *name, name + 1);
                 return name;
             } else
                 return options->renames.renameList[i].newname;
+        }
     return name;
 }
 
@@ -664,7 +670,7 @@ bool parseOptions(int argc, char **argv, option_t *options) {
                     }
                     s = (++argv)[1];
                 }
-                if ((options->ver = parseHexNumber(&s, true)) < 0 || *s != 0) {
+                if ((options->ver = parseHexNumber((char const **)&s, true)) < 0 || *s != 0) {
                     fprintf(stderr, "Bad value %s for -v option\n", s);
                     return false;
                 }
@@ -732,9 +738,9 @@ int main(int argc, char **argv) {
     fclose(fpin);
     fclose(fpout);
     if (ok) {
-        _unlink(options.outfile);       // delete the file if it exists
+        unlink(options.outfile);       // delete the file if it exists
         if (rename(tmpFile, options.outfile) != 0)
             fprintf(stderr, "couldn't save file as %s, saved as %s\n", options.outfile, tmpFile);
     } else
-        _unlink(tmpFile);
+        unlink(tmpFile);
 }
