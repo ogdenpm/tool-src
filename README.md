@@ -4,18 +4,25 @@ This repository contains the source code to a number of utilities I use to help 
 
 See the doc directory for information on each of the utilities.
 
-Originally the code was distributed as part of my [Intel80Tools](https://github.com/ogdenpm/intel80tools) repository, however I have refactored into its own repository as a cleaner option, as the number of tools increases. Prebuilt Windows 32bit binaries of these tools are still distributed as part of the [Intel80Tools](https://github.com/ogdenpm/intel80tools) repository. 
+Originally the code was distributed as part of my [Intel80Tools](https://github.com/ogdenpm/intel80tools) repository, however I have refactored into its own repository as a cleaner option, as the number of tools increases. Prebuilt Windows binaries of these tools are still distributed as part of the [Intel80Tools](https://github.com/ogdenpm/intel80tools) repository. 
 
-Visual studio solution files are provided for all the tools,  but most should compile under linux/unix with little or no modification, although disIntelLib uses C#.
+Visual studio solution files are provided for all the tools. If you get a warning message when building  files, it may be because you are using an older or possibly newer version than I have set the project to. Visual Studio provides simple options to retarget to any version you have.
 
-Note if you get a warning message when building  files, it may be because you are using an older or possibly newer version than I have set the project to. Visual Studio provides simple options to retarget to any version you have.
-Also the first build of disIntelLIb may generate an error as it cannot find the auto generated files. Future attempts should however work.
+In the Linux directory there are makefile to build all the tools under Linux using GCC, with the exception of disIntelLib which is a C# program that currently builds under the older Windows .Net framework. At some point I will update to use .NET core. The makefiles support the following targets
 
-There are also a couple of Windows command files from my [versionTools](https://github.com/ogdenpm/versionTools) repository. Of these version.cmd is the main one that creates the version numbers and perl replacement can be found in the [versionTools](https://github.com/ogdenpm/versionTools) repository. The other should be replaced with your own installation scripts.
+all - default does a normal build but does not update the version number
+clean - clean .o files
+distclean - also deletes the target file
+publish - as per all but also updates the version number
+rebuild - runs distclean followed by make all
+
+Note, the reason for the separate publish target is that when mounting a windows file system under WSL, the getVersion tools run slow as they use git.
+
+There are also some  command files from my [versionTools](https://github.com/ogdenpm/versionTools) repository. Of these getVersion.cmd and getVersion.pl are the main ones that are used to create the version numbers. See the versionTools documentation in the Scripts directory for how to use the install.cmd, or replace with your own solution.
 
 ------
 
 ```
-Updated by Mark Ogden 12-Oct-2020
+Updated by Mark Ogden 29-Feb-2024
 ```
 
