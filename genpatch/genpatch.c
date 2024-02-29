@@ -144,7 +144,7 @@ void genPatch(FILE *fp, image_t *src, image_t *dst, int useType, char *heading) 
                 if (useType == UNSET) { // delete just show as single block
                     fprintf(fp, "%04X   -", addr);
                     if (runlen > 1)
-                        fprintf(fp, " x % 02X\n ", runlen);
+                        fprintf(fp, " x %02X\n ", runlen);
                     else
                         putc('\n', fp);
                 }
@@ -277,9 +277,8 @@ void genPatchFile(char *file, image_t *src, image_t *dst) {
 }
 
 int main(int argc, char **argv) {
-    char *invoke     = argv[0];
-    bool intelBin    = false;
-    bool defaultZero = false;
+
+    invokedBy = getInvokeName(argv[0]);
 
     CHK_SHOW_VERSION(argc, argv);
 
@@ -291,7 +290,7 @@ int main(int argc, char **argv) {
     inFile.source = targetFile.source = IMAGE;
     inFile.mLoad                      = 0x100;
 
-    invokedBy                         = getInvokeName(argv[0]);
+
 
     while (argc > 2 && argv[1][0] == '-') {
         if (strcmp(argv[1], "-l") == 0) {

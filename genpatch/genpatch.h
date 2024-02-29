@@ -30,6 +30,9 @@
 #define NOTABS     256
 #define TESTSIZE   512
 
+#ifndef _MSC_VER
+#define stricmp strcasecmp
+#endif
 
 _Noreturn void error(char *fmt, ...);
-_Noreturn void warning(char *fmt, ...);
+void warning(char *fmt, ...);
