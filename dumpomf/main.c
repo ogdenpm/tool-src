@@ -21,7 +21,11 @@
 
 #include "omf.h"
 #include <ctype.h>
+#ifdef _MSC_VER
 #include <io.h>
+#else
+#include <unistd.h>
+#endif
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -82,11 +86,12 @@ void displayFile(int spec) {
         if (status == BadCRC)
             Log("-- Warning CRC error --");
 
-        if (omfFlavour == ANY) // see if we can resolve flavour of OMF86
+        if (omfFlavour == ANY) { // see if we can resolve flavour of OMF86
             if (recType < 0x80 || recType == 0x84 || recType == 0x86)
                 omfFlavour = INTEL;
             else if (recType > 0xaa || is32bit)
                 omfFlavour = MS;
+        }
 
         int idx = dispatch->low <= recType && recType <= dispatch->high
                       ? (recType - dispatch->low) / 2 + 1

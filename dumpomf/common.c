@@ -1,6 +1,10 @@
 
 #include "omf.h"
+#ifdef _MSC_VER
 #include <io.h>
+#else
+#include <unistd.h>
+#endif
 #include <stdarg.h>
 #include <ctype.h>
 
@@ -131,7 +135,7 @@ void displayLine() {
         if (nCol)
             fprintf(dst, "%*s%s\n", INDENT, "", line);
         else {
-            fprintf(dst, "%04X:%02X #%u %s\n", start / 128, start % 128, recCnt, line);
+            fprintf(dst, "%04lX:%02lX #%u %s\n", start / 128, start % 128, recCnt, line);
             //nCol = 1;
         }
             *line = 0;
@@ -148,12 +152,12 @@ void Log(char const *fmt, ...) {
     if (nCol)
         sprintf(logMsg, "%*s", INDENT, "");
     else
-        fprintf(dst, "%04X:%02X =%u ", start / 128, start % 128, recCnt);
+        fprintf(dst, "%04lX:%02lX =%u ", start / 128, start % 128, recCnt);
 
     vsprintf(logMsg + strlen(logMsg), fmt, args);
     strcat(logMsg, "\n");
     fputs(logMsg, dst);
-    if (dst != stdout && !_isatty(_fileno(dst)))
+    if (dst != stdout && !isatty(fileno(dst)))
         fputs(logMsg, stderr);
     va_end(args);
 }

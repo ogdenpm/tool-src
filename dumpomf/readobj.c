@@ -126,7 +126,7 @@ char const *getName() {
     uint8_t len = getu8();
     char const *p;
     if (recPtr + len <= recEndPtr) {
-        p = pstrdup(len, recPtr);
+        p = pstrdup(len, (char *)recPtr);
         recPtr += len;
     } else {
         p         = "";

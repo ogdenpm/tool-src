@@ -20,7 +20,6 @@
  *                                                                          *
  ****************************************************************************/
 
-#pragma once
 #include "omf.h"
 
 void omf85_02(int type);
@@ -39,7 +38,7 @@ void omfLIBDIC(int type);
 void omfLIBHDR(int type);
 void omf85_2E(int type);
 
-void segId96(segId);
+void segId96(uint8_t segId);
 
 decodeSpec_t omf85Decode[] = {
     /* 00 */ { "INVALID", invalidRecord, NULL },

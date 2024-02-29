@@ -161,11 +161,12 @@ void omf51_08(int type) {
         }
         if ((refTyp & 7) == 7)
             add("-20H)*8");
-        if (offset)
+        if (offset) {
             if (offset >= 0x8000)
                 add(" - %s", hexStr(0x10000 - offset));
             else
                 add(" + %s", hexStr(offset));
+        }
         add(")");
     }
 }
@@ -285,7 +286,7 @@ void omf51_18(int type) {
     int cols = addReptHeader(header);
     while (!atEndRec()) {
         startCol(cols);
-        uint8_t idBlk   = getu8();
+        /*  uint8_t idBlk = */ getu8(); // always 2
         uint8_t extId   = getu8();
         uint8_t symInfo = getu8();
         getu8();

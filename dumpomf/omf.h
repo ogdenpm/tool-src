@@ -107,10 +107,10 @@ extern long start;
 #define FIXED      0
 #define REPEAT     1
 
-uint8_t const *indexKeys;
+extern uint8_t const *indexKeys;
 
-FILE *src;
-FILE *dst;
+extern FILE *src;
+extern FILE *dst;
 extern int extIndex;
 extern int segIndex;
 

@@ -238,7 +238,7 @@ static void explicitFixup(uint8_t typ) {
     fixupDat();
 }
 
-threadFixup(uint8_t typ) {
+void threadFixup(uint8_t typ) {
     uint8_t thred  = typ & 3;
     uint8_t method = (typ >> 2) & 7;
 
@@ -282,7 +282,6 @@ uint32_t blockContent86(uint32_t addr) {
 }
 
 uint32_t block86(uint32_t addr, uint16_t blkCnt) {
-    uint8_t addrWidth = addr >= 0x10000 ? 6 : 4;
 
     uint16_t indent   = getCol();
     uint32_t delta    = 0;
