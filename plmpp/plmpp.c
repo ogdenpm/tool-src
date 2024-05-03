@@ -45,10 +45,10 @@ FILE *openIsisFile(const char *isisName, char *mode);
 #define MAXLINE		256
 
 
-char line[MAXLINE];			/* inChut line */
+char line[MAXLINE];			/* input line */
 char cline[MAXLINE];		/* used to rebuild control line with $IF $SET $RESET and possibly $INCLUDE removed */
 char *ts;					/* token start pointer in line including leading space */
-char *inCh;					/* inChut character pointer in buffer */
+char *inCh;					/* input character pointer in buffer */
 char *outCh;					/* current point in rebuild control line */
 
 typedef unsigned char byte;
@@ -92,7 +92,7 @@ struct {
 
 int incDepth = -1;	/* first file makes this depth 0*/
 int flatten;		/* max depth of includes allowed */
-FILE *inFP;			/* current inChut file */
+FILE *inFP;			/* current input file */
 FILE *outFP;		/* file to write to */
 
 symbol_t *lookup(char *symbol)
@@ -267,7 +267,7 @@ word getIFVal()
 
     if ((type = getToken()) == NUMBER) {
         if (tokenVal > 255)
-            fprintf(stderr, "invalid conditional compliation constant\n");
+            fprintf(stderr, "invalid conditional compilation constant\n");
         return tokenVal;
     }
     else if (type == ID)
@@ -534,12 +534,6 @@ int main(int argc, char **argv)
             strcat(line, ")");
             break;
         case '?':
-            if (optopt == 'c')
-                fprintf(stderr, "Option -%c requires an argument.\n", optopt);
-            else if (isprint(optopt))
-                fprintf(stderr, "Unknown option `-%c'.\n", optopt);
-            else
-                fprintf(stderr,	"Unknown option character `\\x%x'.\n", optopt);
             return 1;
         default:
             abort();
