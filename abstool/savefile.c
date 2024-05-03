@@ -94,8 +94,8 @@ bool fputblock(FILE *fp, image_t *image, int low, int high) {
         putc(0, fp);
         putword(low, fp);
         fwrite(&image->mem[low], 1, len, fp);
-        crc = 0 - MODCONTENT - (len + 4) - (len + 4) / 256 - crcSum(&image->mem[low], len);
-        putc(crc, fp);
+        crc = MODCONTENT + (len + 4) + (len + 4) / 256 + low + low / 256 + crcSum(&image->mem[low], len);
+        putc(-crc, fp);
         break;
     case HEX:
         while (len) {
@@ -173,6 +173,10 @@ void writeModEnd(FILE *fp, image_t *image) {
         break;
     }
     writeOMF(fp);
+    if (image->target == AOMF85 || image->target == AOMF96) {
+        initOMF(MODEOF);
+        writeOMF(fp);
+    }
 }
 
 int saveFile(char *file, image_t *image) {
