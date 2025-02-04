@@ -146,7 +146,7 @@ bool chkBin(FILE *fp) {
     for (;;) {
         int len  = getword(fp);
         int addr = getword(fp);
-        if (len < 0 || addr < 0 || addr + len >= 0xe000) // EOF reached or addr in ROM!!
+        if (len < 0 || addr < 0 || addr + len >= 0x10000) // EOF reached or addr in ROM!!
             return false;
         long here = ftell(fp);
         if (len == 0) { // possible end of BIN, check not too much following it
@@ -250,8 +250,11 @@ void loadOMF(FILE *fp, image_t *image) {
 /* load an Intel Hex file into memory*/
 void loadHex(FILE *fp, image_t *image) {
     rewind(fp);
+    image->mStart = -1;
     int type;
     while ((type = readHex(fp)) >= 0) {
+        if (recLen == 0)
+            return;
         if (type == 0) /* data record */
             addContent(image, recAddr, 0);
         else {
