@@ -599,12 +599,12 @@ void omf86_82(int type) { // LHEADR
 void omf86_84(int type) { // PEDATA
     uint16_t frame = getu16();
     add("Frame:%04X", frame);
-    hexDump(getu16(), strchr("\x9c\x9d", peekNextRecType()) != NULL);
+    hexDump(getu8(), strchr("\x9c\x9d", peekNextRecType()) != NULL);
 }
 
 void omf86_86(int type) { // PIDATA
     add("Frame:%04X", getu16());
-    iData86(getu16());
+    iData86(getu8());
 }
 void omf86_88(int type) { // COMENT
     static ofield_t const headerA7[] = { { 0, "Segment" }, { 0, NULL } };
