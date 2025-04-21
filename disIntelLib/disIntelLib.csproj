@@ -88,9 +88,9 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>if exist $(SolutionDir)install.cfg pushd "$(ProjectDir)" &amp; call $(SolutionDir)Scripts\install.cmd $(TargetPath) $(SolutionDir)&amp; popd</PostBuildEvent>
+    <PostBuildEvent>if exist $(SolutionDir)install.cfg pushd "$(ProjectDir)" &amp; call $(SolutionDir)Tools\install.exe $(TargetPath) $(SolutionDir)&amp; popd</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PreBuildEvent>pushd "$(ProjectDir)" &amp; call $(SolutionDir)Scripts\getversion.cmd  -W &amp; popd</PreBuildEvent>
+    <PreBuildEvent>pushd "$(ProjectDir)" &amp; call $(SolutionDir)Tools\getversion.exe  -f &amp; popd</PreBuildEvent>
   </PropertyGroup>
 </Project>
