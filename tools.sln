@@ -23,6 +23,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "version", "shared\shared.vc
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "disIntelLib", "disIntelLib\disIntelLib.csproj", "{AB4BFDCE-96B3-4B88-B5EE-4DF179B545A3}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bincmp", "bincmp\bincmp.vcxproj", "{2D45FD28-3045-40CC-BF3D-8CB3AE36C7CE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -129,6 +131,18 @@ Global
 		{AB4BFDCE-96B3-4B88-B5EE-4DF179B545A3}.Release|Win32.Build.0 = Release|Any CPU
 		{AB4BFDCE-96B3-4B88-B5EE-4DF179B545A3}.Release|x64.ActiveCfg = Release|Any CPU
 		{AB4BFDCE-96B3-4B88-B5EE-4DF179B545A3}.Release|x64.Build.0 = Release|Any CPU
+		{2D45FD28-3045-40CC-BF3D-8CB3AE36C7CE}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{2D45FD28-3045-40CC-BF3D-8CB3AE36C7CE}.Debug|Any CPU.Build.0 = Debug|x64
+		{2D45FD28-3045-40CC-BF3D-8CB3AE36C7CE}.Debug|Win32.ActiveCfg = Debug|Win32
+		{2D45FD28-3045-40CC-BF3D-8CB3AE36C7CE}.Debug|Win32.Build.0 = Debug|Win32
+		{2D45FD28-3045-40CC-BF3D-8CB3AE36C7CE}.Debug|x64.ActiveCfg = Debug|x64
+		{2D45FD28-3045-40CC-BF3D-8CB3AE36C7CE}.Debug|x64.Build.0 = Debug|x64
+		{2D45FD28-3045-40CC-BF3D-8CB3AE36C7CE}.Release|Any CPU.ActiveCfg = Release|x64
+		{2D45FD28-3045-40CC-BF3D-8CB3AE36C7CE}.Release|Any CPU.Build.0 = Release|x64
+		{2D45FD28-3045-40CC-BF3D-8CB3AE36C7CE}.Release|Win32.ActiveCfg = Release|Win32
+		{2D45FD28-3045-40CC-BF3D-8CB3AE36C7CE}.Release|Win32.Build.0 = Release|Win32
+		{2D45FD28-3045-40CC-BF3D-8CB3AE36C7CE}.Release|x64.ActiveCfg = Release|x64
+		{2D45FD28-3045-40CC-BF3D-8CB3AE36C7CE}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -137,6 +151,7 @@ Global
 		SolutionGuid = {D74CB72D-171D-4F99-99F5-13E29C06F04C}
 	EndGlobalSection
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		shared\shared.vcxitems*{2d45fd28-3045-40cc-bf3d-8cb3ae36c7ce}*SharedItemsImports = 4
 		shared\shared.vcxitems*{479a15b5-1b67-4ee5-8642-1ba0a10787a2}*SharedItemsImports = 4
 		shared\shared.vcxitems*{583252ba-2b11-408e-ac77-4c0c610737ef}*SharedItemsImports = 4
 		shared\shared.vcxitems*{67e50f4d-91e8-4164-9c4a-9ec82537a660}*SharedItemsImports = 4
