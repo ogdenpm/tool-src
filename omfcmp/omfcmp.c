@@ -850,7 +850,7 @@ void cmpModule(omf_t *lomf, omf_t *romf)
 }
 
 
-void usage(char *fmt, ...) {
+_Noreturn void usage(char *fmt, ...) {
 
     if (fmt) {
         va_list args;
