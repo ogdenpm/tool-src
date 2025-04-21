@@ -5,9 +5,6 @@
   <PropertyGroup>
     <IntDir>$(SolutionDir)Build\$(ProjectName)\$(PlatformTarget)-$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)Install\$(PlatformTarget)-$(Configuration)\</OutDir>
-    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck> 
-    <VersionFlag Condition="'$(Configuration)' == 'Debug'">-w</VersionFlag>
-    <VersionFlag Condition="'$(Configuration)' != 'Debug'">-W</VersionFlag>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
@@ -26,17 +23,11 @@
     <PreBuildEvent />
     <PreBuildEvent />
     <PostBuildEvent>
-      <Command>if exist $(SolutionDir)install.cfg call $(SolutionDir)Scripts\install.cmd $(TargetPath) $(SolutionDir)</Command>
+        <Command>if exist "$(SolutionDir)install.cfg" "$(SolutionDir)Tools/install.exe" "$(TargetPath)" "$(SolutionDir)\"</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Install</Message>
     </PostBuildEvent>
-    <PreBuildEvent>
-      <Command>call $(SolutionDir)\Scripts\getVersion.cmd $(VersionFlag)</Command>
-    </PreBuildEvent>
-    <PreBuildEvent>
-      <Message>Get Version ($(Configuration))</Message>
-    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup />
 </Project>
