@@ -120,9 +120,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <PostBuildEvent>
-      <Command>if exist $(SolutionDir)install.cfg call $(SolutionDir)Scripts\install.cmd $(TargetPath) $(SolutionDir)</Command>
-    </PostBuildEvent>
+    <PostBuildEvent />
     <CustomBuildStep>
       <Command>
       </Command>
@@ -150,9 +148,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <PostBuildEvent>
-      <Command>if exist $(SolutionDir)install.cfg call $(SolutionDir)Scripts\install.cmd $(TargetPath) $(SolutionDir)</Command>
-    </PostBuildEvent>
+    <PostBuildEvent />
     <CustomBuildStep>
       <Command>
       </Command>
@@ -176,9 +172,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <PostBuildEvent>
-      <Command>if exist $(SolutionDir)install.cfg call $(SolutionDir)Scripts\install.cmd $(TargetPath) $(SolutionDir)</Command>
-    </PostBuildEvent>
+    <PostBuildEvent />
     <CustomBuildStep>
       <Command>
       </Command>
@@ -206,9 +200,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <PostBuildEvent>
-      <Command>if exist $(SolutionDir)install.cfg call $(SolutionDir)Scripts\install.cmd $(TargetPath) $(SolutionDir)</Command>
-    </PostBuildEvent>
+    <PostBuildEvent />
     <CustomBuildStep>
       <Command>
       </Command>
