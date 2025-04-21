@@ -253,8 +253,11 @@ void loadHex(FILE *fp, image_t *image) {
     image->mStart = -1;
     int type;
     while ((type = readHex(fp)) >= 0) {
-        if (recLen == 0 && type == 1) {
-            image->mStart = recAddr;
+        if (recLen == 0) {
+            if (type == 1)
+                image->mStart = recAddr;
+            else
+                warning("Intel Hex file has no start record");
             return;
         }
         if (type == 0) /* data record */
