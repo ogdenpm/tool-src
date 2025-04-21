@@ -253,14 +253,12 @@ void loadHex(FILE *fp, image_t *image) {
     image->mStart = -1;
     int type;
     while ((type = readHex(fp)) >= 0) {
-        if (recLen == 0)
-            return;
-        if (type == 0) /* data record */
-            addContent(image, recAddr, 0);
-        else {
+        if (recLen == 0 && type == 1) {
             image->mStart = recAddr;
             return;
         }
+        if (type == 0) /* data record */
+            addContent(image, recAddr, 0);
     }
     error("Intel Hex file missing end record");
 }

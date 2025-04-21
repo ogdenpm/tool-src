@@ -95,7 +95,7 @@ enum { PATCHADDRESS, PATCHVAL, APPENDVAL, METAOPT };
 int context    = PATCHADDRESS;
 
 char *tokens[] = { "APPEND", "AOMF51", "AOMF85", "AOMF96", "ISISBIN", "HEX",    "IMAGE", "TARGET",
-                   "SOURCE", "NAME",   "DATE",   "START",  "LOAD",    "TRN",    "VER",   "MAIN",
+                   "SOURCE", "NAME",   "DATE", "START",  "LOAD",    "TRN",    "VER",   "MAIN",
                    "MASK",   "$START", "=",      "-",      "HEXBYTE",  "HEXWORD", "STRING", "EOL",   "ERROR" };
 
 typedef struct {
@@ -139,7 +139,7 @@ char *parseToken(char *s, value_t *val) {
     static uint8_t stype[]      = { DEINIT, SKIP, EOL };
     static char const escchar[] = "abfnrtv'\"\\";
     static char const mapchar[] = "\a\b\f\n\r\t\v'\"\\";
-    char token[8];
+    char token[9];
     char *t;
 
     s = skipSpc(s);
@@ -147,7 +147,7 @@ char *parseToken(char *s, value_t *val) {
     if (isalpha(*s) || *s == '$') {
         int i, j;
         token[0] = toupper(s[0]);
-        for (i = 1; i < 7 && isalnum(s[i]); i++)
+        for (i = 1; i < 8 && isalnum(s[i]); i++)
             token[i] = toupper(s[i]);
         token[i] = '\0';
 
@@ -434,12 +434,10 @@ void patchfile(char *fname, image_t *image) {
                             image->mLoad);
                 break;
             case START:
-                if (image->mStart >= 0 && image->mStart != val.hval) {
-                    warning("patch file was written for %04XH start not %04XH", val.hval,
+                if (image->mStart >= 0 && image->mStart != val.hval)
+                    warning("overriding start location to %04XH from %04XH", val.hval,
                             image->mStart);
-                    break;
-                }
-                // fall through, to set start
+                // fallthrough
             case TRN:
             case VER:
             case MAIN:

@@ -170,6 +170,7 @@ int main(int argc, char **argv) {
             warning("Did you mean to convert between AOMFxx file formats");
         if (argc == 4)
             patchfile(argv[2], &inFile);
+    
         return saveFile(argv[argc - 1], &inFile);
     } else {
         fprintf(stderr, "Nothing loaded\n");
