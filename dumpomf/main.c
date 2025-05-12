@@ -57,6 +57,7 @@ _Noreturn void usage(char const *s) {
 
 void dumprec(FILE *fpout, bool isGood);
 
+extern decodeSpec_t omfUknDecode[];
 extern decodeSpec_t omf85Decode[];
 extern decodeSpec_t omf51Decode[];
 extern decodeSpec_t omf96Decode[];
@@ -65,15 +66,22 @@ void init85();
 void init51();
 void init96();
 void init86();
+void initUkn();
 
-omfDispatch_t dispatchTable[] = { { init85, 2, 0x2e, omf85Decode },
+omfDispatch_t dispatchTable[] = { { initUkn, 0, 0, omfUknDecode },
+                                  { init85, 2, 0x2e, omf85Decode },
                                   { init51, 2, 0x2c, omf51Decode },
+                                  { init51, 2, 0x72, omf51Decode },
                                   { init96, 2, 0x2e, omf96Decode },
                                   { init86, 0x6e, 0xce, omf86Decode } };
 
+decodeSpec_t omfUknDecode[] = {
+    { "UNKNOWN", invalidRecord, NULL }
+};
 
 
-
+void initUkn() {
+}
 
 void displayFile(int spec) {
     omfDispatch_t *dispatch = &dispatchTable[spec];
@@ -96,7 +104,7 @@ void displayFile(int spec) {
         int idx = dispatch->low <= recType && recType <= dispatch->high
                       ? (recType - dispatch->low) / 2 + 1
                       : 0;
-        if (!dispatch->decodeTable[idx].name || !isValidRec())
+        if (!dispatch->decodeTable[idx].name || !isValidRec(spec))
             idx = 0;
 
         add("%s(%s): ", dispatch->decodeTable[idx].name, hexStr(recType));
@@ -134,10 +142,9 @@ int main(int argc, char **argv) {
     if (argc != 3 || (dst = fopen(argv[2], "w")) == NULL)
         dst = stdout;
 
-    if ((spec = detectOMF()) != OMFUKN)
-        displayFile(spec);
-    else
+    if ((spec = detectOMF()) == OMFUKN)
         fprintf(stderr, "%s cannot determine OMF spec\n", argv[1]);
+    displayFile(spec);
     fclose(dst);
     fclose(src);
     return 0;

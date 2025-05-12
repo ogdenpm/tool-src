@@ -21,6 +21,7 @@
  ****************************************************************************/
 
 #include "omf.h"
+#include <time.h>
 
 void omf51_02(int type);
 void omf51_04(int type);
@@ -32,6 +33,10 @@ void omf51_12(int type);
 void omf51_16(int type);
 
 void omf51_18(int type);
+void omf51k_20(int type);
+void omf51k_24(int type);
+void omf51k_70(int type);
+void omf51k_72(int type);
 
 decodeSpec_t omf51Decode[] = {
     /* 00 */ { "INVALID", invalidRecord, NULL },
@@ -50,19 +55,57 @@ decodeSpec_t omf51Decode[] = {
     /* 1A */ { NULL, invalidRecord, NULL },
     /* 1C */ { NULL, invalidRecord, NULL },
     /* 1E */ { NULL, invalidRecord, NULL },
-    /* 20 */ { NULL, invalidRecord, NULL },
-    /* 22 */ { NULL, invalidRecord, NULL },
-    /* 24 */ { NULL, invalidRecord, NULL },
+    /* 20 */ { "TYPDEF", omf51k_20, NULL },
+    /* 22 */ { "KDBGITEM", omf51_12, NULL },
+    /* 24 */ { "SOURCE", omf51k_24, NULL },
     /* 26 */ { "LIBLOC", omfLIBLOC, NULL },
     /* 28 */ { "LIBNAM", omfLIBNAM, NULL },
     /* 2A */ { "LIBDIC", omfLIBDIC, NULL },
     /* 2C */ { "LIBHDR", omfLIBHDR, NULL },
+    /* 2E */ { NULL, invalidRecord, NULL },
+    /* 30 */ { NULL, invalidRecord, NULL },
+    /* 32 */ { NULL, invalidRecord, NULL },
+    /* 34 */ { NULL, invalidRecord, NULL },
+    /* 36 */ { NULL, invalidRecord, NULL },
+    /* 38 */ { NULL, invalidRecord, NULL },
+    /* 3A */ { NULL, invalidRecord, NULL },
+    /* 3C */ { NULL, invalidRecord, NULL },
+    /* 3E */ { NULL, invalidRecord, NULL },
+    /* 40 */ { NULL, invalidRecord, NULL },
+    /* 42 */ { NULL, invalidRecord, NULL },
+    /* 44 */ { NULL, invalidRecord, NULL },
+    /* 46 */ { NULL, invalidRecord, NULL },
+    /* 48 */ { NULL, invalidRecord, NULL },
+    /* 4A */ { NULL, invalidRecord, NULL },
+    /* 4C */ { NULL, invalidRecord, NULL },
+    /* 4E */ { NULL, invalidRecord, NULL },
+    /* 50 */ { NULL, invalidRecord, NULL },
+    /* 52 */ { NULL, invalidRecord, NULL },
+    /* 54 */ { NULL, invalidRecord, NULL },
+    /* 56 */ { NULL, invalidRecord, NULL },
+    /* 58 */ { NULL, invalidRecord, NULL },
+    /* 5A */ { NULL, invalidRecord, NULL },
+    /* 5C */ { NULL, invalidRecord, NULL },
+    /* 5E */ { NULL, invalidRecord, NULL },
+    /* 60 */ { NULL, invalidRecord, NULL },
+    /* 62 */ { NULL, invalidRecord, NULL },
+    /* 64 */ { NULL, invalidRecord, NULL },
+    /* 66 */ { NULL, invalidRecord, NULL },
+    /* 68 */ { NULL, invalidRecord, NULL },
+    /* 6A */ { NULL, invalidRecord, NULL },
+    /* 6C */ { NULL, invalidRecord, NULL },
+    /* 6E */ { NULL, invalidRecord, NULL },
+    /* 70 */ { "DEPLST", omf51k_70, NULL },
+    /* 72 */ { "REGMSK", omf51k_72, NULL },
+
 };
+
 
 void init51() {
     resetNames();
     setIndex(ISEG, 0, "ABS");
     extIndex = segIndex = 0;
+
 }
 
 void segInfo51(uint8_t n) { // Max width = 5 + 6 + 11 = 22
@@ -90,6 +133,32 @@ void symInfo51(uint8_t n) { // Max width = 6 + 5 + 4 + 7 = 22
         if (n & 0x10)
             add(" bank %d", (n >> 3) & 3);
     }
+}
+
+char const *getTiStr(uint16_t ti) {
+    static char const *types[] = { "null",         "sbit",    "char",        "sfr/uint8_t", "int16_t",
+                                   "uint16_t", "int32_t", "uint32_t",    "resv8",       "resv09",
+                                   "resv10",   "void",  "float/double" };
+    static char userType[16];
+    if (ti <= 12)
+        return types[ti];
+    else if (ti < 32)
+        sprintf(userType, "#%d", ti);
+    else
+        sprintf(userType, "@%d", ti);
+    return userType;
+}
+
+void symInfo51k(uint8_t n, uint16_t ti) { // Max width = 6 + 5 + 4 + 7 = 22
+    static char const *usage[] = { "CODE", "XDATA",  "DATA",  "IDATA",
+                                   "BIT",  "NUMBER", "INFO6", "INFO7" };
+    addField("%s", getTiStr(ti));
+    addField("%-6s", usage[n & 7]);
+
+    if (n & 0x80)
+        add(" IND");
+    if (n & 0x10)
+        add(" bank %d", (n >> 3) & 3);
 }
 
 void omf51_02(int type) {
@@ -193,12 +262,12 @@ void omf51_0E(int type) {
         uint16_t segBase    = getu16();
         uint16_t segSize    = getu16();
         char const *segName = getName();
-
         if (segId)
             setIndex(ISEG, segId, segName);
         addField("@%d", segId);
         addField("%s", *segName ? segName : "*Unnamed*");
         addField("%04X:%04X", segBase, segSize);
+
         if (relTyp < 6)
             addField("%s", relTypes[relTyp]);
         else
@@ -226,6 +295,13 @@ void omf51_12(int type) {
         { "Name", WNAME }, { "Segment:Offset", MAXNAME + 5 }, { "Info", WINFO51 }, { NULL }
     };
 
+    static field_t const headerk[]   = { { "Name", WNAME },
+                                         { "Segment:Offset", MAXNAME + 5 },
+                                         { "Type", 13 },
+                                         { "Info", WINFO51 },
+
+                                         { NULL } };
+
     static field_t const linHeader[] = { { "Segment:Offset", MAXNAME + 5 },
                                          { "Line", 5 },
                                          { NULL } };
@@ -235,7 +311,7 @@ void omf51_12(int type) {
         return;
     add("%s", types[defTyp]);
 
-    int cols = addReptHeader(defTyp < 3 ? header : linHeader);
+    int cols = addReptHeader(defTyp < 3 ? type == 0x12 ? header : headerk : linHeader);
 
     while (!atEndRec()) {
         startCol(cols);
@@ -243,11 +319,15 @@ void omf51_12(int type) {
             uint8_t segId   = getu8();
             uint8_t info    = getu8();
             uint16_t offset = getu16();
-            getu8();
+            uint8_t ti      = getu8();
+
             addField("%s", getName());
             addField("%s:%04X", getIndexName(ISEG, segId), offset);
             if (defTyp < 2)
-                symInfo51(info);
+                if (type == 0x12)
+                    symInfo51(info);
+                else
+                    symInfo51k(info, ti);
             else
                 segInfo51(info);
         } else {
@@ -302,5 +382,141 @@ void omf51_18(int type) {
         addField("@%d", extId);
         addField("%s", extName);
         symInfo51(symInfo);
+    }
+}
+
+void rawBytes(uint16_t cnt) {
+    while (cnt-- && !malformed)
+        add(" %02X", getu8());
+
+}
+
+void omf51k_20(int type) {
+    uint16_t typeIndex = 32;
+    while (!atEndRec() && !malformed) {
+        startCol(1);
+        uint8_t subtype = getu8();
+        uint16_t cnt;
+        uint8_t one;
+        uint16_t offset;
+        uint16_t index;
+        const char *name;
+
+        add("@%-2d ", typeIndex++);
+        switch (subtype) {
+        case 0x20:
+            cnt = getu16();
+            add("User Type:");
+            while (cnt-- != 0) {
+                offset = getu16();
+                uint16_t ti      = getIndex();
+                name = getName();
+                if (malformed)
+                    return;
+                startCol(1);
+                add("    %04X %s %s", offset, getTiStr(ti), name);
+            }
+            break;
+        case 0x22:
+            cnt = getu8();  // dimensions
+            add("Array: ");
+            while (cnt-- && !malformed)
+                add("[%d]", getu16());
+            add(" %s", getTiStr(getIndex()));
+            break;
+        case 0x23:
+            add("Procedure: %s", getTiStr(getIndex()));
+            add("(%s)", getTiStr(getIndex()));
+
+            break;
+        case 0x24:
+            one = getu8();
+            name = getName();
+            if (!malformed)
+                add("Tag: %d %s", one, name);
+            break;
+        case 0x25:
+
+            add("Struct/Union: size=%d", getu16());
+            add(" base=%s", getTiStr(getIndex()));
+            index = getIndex();
+            if (index)
+                add(" tag=%s", getTiStr(index));
+            break;
+        case 0x28:
+            add("Pointer:");
+            rawBytes(3);
+            one = getu8();
+            if (one == 1 || one == 2)
+                add(" %s", one == 1 ? "DataPtr" : "FunctionPtr");
+            else
+                add(" [%02X]", one);
+            rawBytes(3);
+            add(" %s", getTiStr(getIndex()));
+
+            break;
+        default:
+            Log("Unknown TYPDEF subtype %d", subtype);
+            return;
+            
+        }
+    }
+
+
+
+}
+void omf51k_24(int type) {
+    uint32_t zeros = getu24();
+    char const *name = getName();
+    if (!malformed) {
+        if (zeros)
+            add(" %s", hexStr(zeros));
+        add(" %s", name);
+    }
+}
+
+void addTime(time_t *timestamp) {
+    struct tm *tm = localtime(timestamp);
+    add("[%04d-%02d-%02d %02d:%02d:%02d]", tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
+        tm->tm_hour, tm->tm_min, tm->tm_sec);
+}
+
+void omf51k_70(int type) {
+    static char *types[] = { "Output", "Input", "Include", "Script", "Object" };
+    while (!atEndRec() && !malformed) {
+        uint8_t type = getu8();
+        startCol(1);
+        if (type == 0xff) {
+            char const *name = getName();
+            add("Invoke: %s", name);
+
+        } else if (type <= 4) {
+            if (getu8() != 0) {
+                Log("Non zero mark");
+                return;
+            }
+            time_t timestamp = getu32();
+            char const *name = getName();
+            if (malformed)
+                return;
+            add("  %s:%*s", types[type], 8 - strlen(types[type]), "");
+            addTime(&timestamp);
+            add(" %s", name);
+        } else {
+            Log("Unknown DEPLST file type %d", type);
+            return;
+        }
+    }
+}
+
+void omf51k_72(int type) {
+    while (!atEndRec() && !malformed) {
+        startCol(1);
+        uint8_t e8       = getu8();
+        uint16_t r16     = getu16();
+        char const *name = getName();
+        if (malformed)
+            return;
+        add("%s mask=%04X %s", e8 == 1 ? "Public  " : "External", r16, name);
     }
 }

@@ -177,6 +177,7 @@ int detectOMF() {
     else if (strchr("\x6e\x80\x82\xa4", recType)) { /* RHEADR, THEADR, LHEADER, LIBHED */
         omfFlavour = ANY;
         return OMF86;
-    }
+    } else if (recType == 0x70)
+        return OMF51K;
     return OMFUKN;
 }

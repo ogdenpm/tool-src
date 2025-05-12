@@ -65,7 +65,7 @@ extern bool malformed;
 
 enum { Junk = -2, Eof = -1, BadCRC = 0, Ok = 1 };
 
-enum omf_e { OMFUKN = -1, OMF85, OMF51, OMF96, OMF86};
+enum omf_e { OMFUKN = 0, OMF85, OMF51, OMF51K, OMF96, OMF86};
 enum flavour_e { ANY, INTEL, MS, IBM, PHARLAP};
 
 extern enum flavour_e omfFlavour;
@@ -73,7 +73,7 @@ extern enum flavour_e omfFlavour;
 typedef struct {
     char const *name; /* starts with + if odd record number is supported */
     void (*handler)(int type);
-    uint8_t *follew;
+    uint8_t *reserved;
 } decodeSpec_t;
 
 typedef struct _omfDispatch {
@@ -169,7 +169,7 @@ void omfLIBHDR(int type);
 void undoCol();
 uint16_t getCol();
 
-bool isValidRec();
+bool isValidRec(int spec);
 uint16_t getRecPos();
 void setRecPos(uint16_t pos);
 
