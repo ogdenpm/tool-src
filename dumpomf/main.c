@@ -43,6 +43,7 @@ bool malformed;
 
 int detectOMF();
 enum flavour_e omfFlavour = ANY;
+bool rawMode              = false;
 
 
 FILE *src;
@@ -51,7 +52,7 @@ FILE *dst;
 _Noreturn void usage(char const *s) {
     if (s && *s)
         fputs(s, stderr);
-    fprintf(stderr, "usage: %s -v | -V | objfile [outputfile]\n", invoke);
+    fprintf(stderr, "usage: %s -v | -V | [-r] objfile [outputfile]\n", invoke);
     exit(1);
 }
 
@@ -109,7 +110,10 @@ void displayFile(int spec) {
 
         add("%s(%s): ", dispatch->decodeTable[idx].name, hexStr(recType));
         fixCol();
-        dispatch->decodeTable[idx].handler(recType);
+        if (rawMode)
+            invalidRecord(recType);
+        else
+            dispatch->decodeTable[idx].handler(recType);
         if (malformed || !atEndRec()) {
             if (malformed)
                 undoCol();
@@ -135,6 +139,11 @@ int main(int argc, char **argv) {
 
     invoke = argv[0];
     CHK_SHOW_VERSION(argc, argv);
+
+    if (argc > 1 && strcmp(argv[1], "-r") == 0) {
+        argc--, argv++;
+        rawMode = true;
+    }
 
     if (argc < 2 || (src = fopen(argv[1], "rb")) == NULL)
         usage("can't open input file\n");

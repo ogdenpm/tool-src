@@ -100,12 +100,10 @@ decodeSpec_t omf51Decode[] = {
 
 };
 
-
 void init51() {
     resetNames();
     setIndex(ISEG, 0, "ABS");
     extIndex = segIndex = 0;
-
 }
 
 void segInfo51(uint8_t n) { // Max width = 5 + 6 + 11 = 22
@@ -136,9 +134,9 @@ void symInfo51(uint8_t n) { // Max width = 6 + 5 + 4 + 7 = 22
 }
 
 char const *getTiStr(uint16_t ti) {
-    static char const *types[] = { "null",         "sbit",    "char",        "sfr/uint8_t", "int16_t",
-                                   "uint16_t", "int32_t", "uint32_t",    "resv8",       "resv09",
-                                   "resv10",   "void",  "float/double" };
+    static char const *types[] = { "None",     "sbit",    "char",     "uint8_t", "int16_t",
+                                   "uint16_t", "int32_t", "uint32_t", "resv8",   "resv09",
+                                   "resv10",   "void",    "float" };
     static char userType[16];
     if (ti <= 12)
         return types[ti];
@@ -388,16 +386,18 @@ void omf51_18(int type) {
 void rawBytes(uint16_t cnt) {
     while (cnt-- && !malformed)
         add(" %02X", getu8());
-
 }
 
 void omf51k_20(int type) {
-    uint16_t typeIndex = 32;
+    static char *namespaces[] = { "", " idata", " xdata", " [3]", " data", " code" };
+    static char *scopes[]     = { "[0]", "Global", "Specific", "Stack" };
+    static uint8_t sizes[]    = { 3, 1, 2, 0, 1, 2 };
+    uint16_t typeIndex        = 32;
     while (!atEndRec() && !malformed) {
         startCol(1);
         uint8_t subtype = getu8();
         uint16_t cnt;
-        uint8_t one;
+        uint16_t val;
         uint16_t offset;
         uint16_t index;
         const char *name;
@@ -406,19 +406,19 @@ void omf51k_20(int type) {
         switch (subtype) {
         case 0x20:
             cnt = getu16();
-            add("User Type:");
+            add("Components:");
             while (cnt-- != 0) {
-                offset = getu16();
-                uint16_t ti      = getIndex();
-                name = getName();
+                offset      = getu16();
+                uint16_t ti = getIndex();
+                name        = getName();
                 if (malformed)
                     return;
                 startCol(1);
-                add("    %04X %s %s", offset, getTiStr(ti), name);
+                add("    %04X %-9s %s", offset, getTiStr(ti), name);
             }
             break;
         case 0x22:
-            cnt = getu8();  // dimensions
+            cnt = getu8(); // dimensions
             add("Array: ");
             while (cnt-- && !malformed)
                 add("[%d]", getu16());
@@ -430,43 +430,75 @@ void omf51k_20(int type) {
 
             break;
         case 0x24:
-            one = getu8();
+            val  = getu8();
             name = getName();
             if (!malformed)
-                add("Tag: %d %s", one, name);
+                add("Tag: %d %s", val, name);
             break;
         case 0x25:
-
             add("Struct/Union: size=%d", getu16());
-            add(" base=%s", getTiStr(getIndex()));
-            index = getIndex();
-            if (index)
-                add(" tag=%s", getTiStr(index));
+            add(" components=%s", getTiStr(getIndex()));
+            add(" tag=%s", getTiStr(getIndex()));
             break;
-        case 0x28:
-            add("Pointer:");
-            rawBytes(3);
-            one = getu8();
-            if (one == 1 || one == 2)
-                add(" %s", one == 1 ? "DataPtr" : "FunctionPtr");
-            else
-                add(" [%02X]", one);
-            rawBytes(3);
-            add(" %s", getTiStr(getIndex()));
+        case 0x26: // bitfield
+            val = getu8();
+            add("Bitfield: [%02X] offset=%d", val, getu8());
+            add(" width=%d", getu8());
+            break;
 
+        case 0x28:
+            {
+                uint8_t scope     = getu8();
+                uint8_t size      = getu8();
+                uint8_t namespc   = getu8();
+                uint8_t ptrtype   = getu8();
+                uint8_t regAlloc  = getu8();
+                val               = getu16();
+                char const *tistr = getTiStr(getIndex());
+
+                if (malformed)
+                    return;
+                if (ptrtype == 1)
+                    add("Data Pointer:");
+                else if (ptrtype == 2)
+                    add("Function Pointer:");
+                else
+                    add("Pointer type %d", ptrtype);
+
+                if (regAlloc)
+                    add(" {Alloc=%02X}", regAlloc);
+
+                if (namespc <= 5) {
+                    if (namespc == 0 && scope != 1 || (namespc > 0 && scope != 2)) {
+                        if (scope <= 3)
+                            add(" %s", scopes[scope]);
+                        else
+                            add(" scope_%d", scope);
+                    }
+                    if (size != sizes[namespc])
+                        add(" size=%d", size);
+                    add(" %s%s *", tistr, namespaces[namespc]);
+                } else {
+                    if (scope <= 3)
+                        add(" %s", scopes[scope]);
+                    else
+                        add(" scope_%d", scope);
+                    add(" size=%d", size);
+                    add(" %s unknown_%d *", tistr, namespc);
+                }
+
+                if (val)
+                    add(" Reserved=[%02x %02x", val % 256, val / 256);
+            }
             break;
         default:
             Log("Unknown TYPDEF subtype %d", subtype);
             return;
-            
         }
     }
-
-
-
 }
 void omf51k_24(int type) {
-    uint32_t zeros = getu24();
+    uint32_t zeros   = getu24();
     char const *name = getName();
     if (!malformed) {
         if (zeros)
