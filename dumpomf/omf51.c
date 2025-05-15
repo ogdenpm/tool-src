@@ -115,22 +115,7 @@ void segInfo51(uint8_t n) { // Max width = 5 + 6 + 11 = 22
     if (n & 0x20)
         add(" Ovl bank %d", bank);
     else if (bank)
-        Log("Non-zero bank(%d) for nonoverlayable segment", bank);
-}
-
-void symInfo51(uint8_t n) { // Max width = 6 + 5 + 4 + 7 = 22
-    char const *usage[] = { "CODE", "XDATA", "DATA", "IDATA", "BIT", "NUMBER", "INFO6", "INFO7" };
-
-    addField("%s", usage[n & 7]);
-    if (n & 0x40) // variable
-        add(" VAR");
-    else {
-        add(" PROC");
-        if (n & 0x80)
-            add(" IND");
-        if (n & 0x10)
-            add(" bank %d", (n >> 3) & 3);
-    }
+        Log("Non-zero bank(%d) for non-overlayable segment", bank);
 }
 
 char const *getTiStr(uint16_t ti) {
@@ -147,16 +132,20 @@ char const *getTiStr(uint16_t ti) {
     return userType;
 }
 
-void symInfo51k(uint8_t n, uint16_t ti) { // Max width = 6 + 5 + 4 + 7 = 22
-    static char const *usage[] = { "CODE", "XDATA",  "DATA",  "IDATA",
-                                   "BIT",  "NUMBER", "INFO6", "INFO7" };
-    addField("%s", getTiStr(ti));
-    addField("%-6s", usage[n & 7]);
+void symInfo51(uint8_t n, bool keil) { // Max width = 6 + 5 + 4 + 7 = 22
+    char const *usage[] = { "CODE", "XDATA", "DATA", "IDATA", "BIT", "NUMBER", "INFO6", "INFO7" };
 
-    if (n & 0x80)
-        add(" IND");
-    if (n & 0x10)
-        add(" bank %d", (n >> 3) & 3);
+    addField("%s", usage[n & 7]);
+    if (n & 0x40) // variable
+        add(" VAR");
+    else {
+        if (!keil)
+            add(" PROC");
+        if (n & 0x80)
+            add(" IND");
+        if (n & 0x10)
+            add(" bank %d", (n >> 3) & 3);
+    }
 }
 
 void omf51_02(int type) {
@@ -188,7 +177,7 @@ void omf51_04(int type) {
 
 void omf51_06(int type) {
     add("Seg[%s]", getIndexName(ISEG, getu8()));
-    hexDump(getu16(), peekNextRecType() == 8);
+    hexDump(type == 6 ? getu16() : getu24(), peekNextRecType() == 8);
 }
 
 void omf51_08(int type) {
@@ -241,7 +230,7 @@ void omf51_08(int type) {
 void omf51_0E(int type) {
     char const *relTypes[] = { "ABS", "UNIT", "BITADDRESSABLE", "INPAGE", "INBLOCK", "PAGE" };
 
-    static field_t const header[] = { { "Id", 4 },      { "Name", WNAME },      { "Base:Size" },
+    static field_t const header[] = { { "Id", 4 },      { "Name", WNAME },      { "Base:Size", 12 },
                                       { "RelTyp", 14 }, { "SegInfo", WINFO51 }, { NULL } };
     int cols                      = addReptHeader(header);
 
@@ -254,16 +243,19 @@ void omf51_0E(int type) {
             segIndex = segId;
         }
 
-        uint8_t segInfo = getu8();
-        uint8_t relTyp  = getu8();
-        getu8();
-        uint16_t segBase    = getu16();
+        uint8_t segInfo     = getu8();
+        uint8_t relTyp      = getu8();
+        uint8_t pad         = getu8();
+
+        uint32_t segBase    = type == 0xe ? getu16() : getu24();
         uint16_t segSize    = getu16();
         char const *segName = getName();
         if (segId)
             setIndex(ISEG, segId, segName);
         addField("@%d", segId);
         addField("%s", *segName ? segName : "*Unnamed*");
+        if (pad != (type & 1))
+            add(" pad=%02X");
         addField("%04X:%04X", segBase, segSize);
 
         if (relTyp < 6)
@@ -316,21 +308,25 @@ void omf51_12(int type) {
         if (defTyp < 3) {
             uint8_t segId   = getu8();
             uint8_t info    = getu8();
-            uint16_t offset = getu16();
+            uint8_t pad     = type & 1 ? getu8() : 0;   // not sure on this
+            uint32_t offset = getu16();
             uint8_t ti      = getu8();
 
             addField("%s", getName());
-            addField("%s:%04X", getIndexName(ISEG, segId), offset);
-            if (defTyp < 2)
-                if (type == 0x12)
-                    symInfo51(info);
-                else
-                    symInfo51k(info, ti);
+            if (type == 0x22 && segId == 0 && offset <= 7)
+                addField("R%d+", offset);
             else
+                addField("%s:%04X", getIndexName(ISEG, segId), offset);
+            if (defTyp < 2) {
+                if (type != 0x12)
+                    addField("%s", getTiStr(ti));
+                symInfo51(info, type != 0x12);
+            } else
                 segInfo51(info);
         } else {
             uint8_t segId   = getu8();
-            uint16_t offset = getu16();
+            uint8_t pad     = type & 1 ? getu8() : 0;
+            uint32_t offset = getu16();
             addField("%s:%04X", getIndexName(ISEG, segId), offset);
             addField("#%d", getu16()); // line number
         }
@@ -347,12 +343,12 @@ void omf51_16(int type) {
         startCol(cols);
         uint8_t segId   = getu8();
         uint8_t symInfo = getu8();
-        uint16_t offset = getu16();
+        uint32_t offset = type & 1 ? getu24() : getu16();
         getu8();
 
         addField("%s", getName()); // name
         addField("%s:%04X", getIndexName(ISEG, segId), offset);
-        symInfo51(symInfo);
+        symInfo51(symInfo, type & 1);
     }
 }
 
@@ -365,7 +361,7 @@ void omf51_18(int type) {
     while (!atEndRec()) {
         startCol(cols);
         /*  uint8_t idBlk = */ getu8(); // always 2
-        uint8_t extId   = getu8();
+        uint16_t extId  = type & 1 ? getu16() : getu8();
         uint8_t symInfo = getu8();
         getu8();
         char const *extName = getName();
@@ -379,7 +375,7 @@ void omf51_18(int type) {
 
         addField("@%d", extId);
         addField("%s", extName);
-        symInfo51(symInfo);
+        symInfo51(symInfo, type & 1);
     }
 }
 
@@ -392,6 +388,9 @@ void omf51k_20(int type) {
     static char *namespaces[] = { "", " idata", " xdata", " [3]", " data", " code" };
     static char *scopes[]     = { "[0]", "Global", "Specific", "Stack" };
     static uint8_t sizes[]    = { 3, 1, 2, 0, 1, 2 };
+    static char *reg[]        = { "R3", "R5,R3", "R7,R5,R3", "R1/R2/R3" };
+    static char *regPair[]    = { "R2/R3",  "R4/R5,R2/R2", "R6/R7,R4/R5,R2/R3" };
+
     uint16_t typeIndex        = 32;
     while (!atEndRec() && !malformed) {
         startCol(1);
@@ -408,13 +407,13 @@ void omf51k_20(int type) {
             cnt = getu16();
             add("Components:");
             while (cnt-- != 0) {
-                offset      = getu16();
-                uint16_t ti = getIndex();
-                name        = getName();
+                offset = getu16();
+                index  = getIndex();
+                name   = getName();
                 if (malformed)
                     return;
                 startCol(1);
-                add("    %04X %-9s %s", offset, getTiStr(ti), name);
+                add("    %04X %-9s %s", offset, getTiStr(index), name);
             }
             break;
         case 0x22:
@@ -465,8 +464,14 @@ void omf51k_20(int type) {
                 else
                     add("Pointer type %d", ptrtype);
 
-                if (regAlloc)
-                    add(" {Alloc=%02X}", regAlloc);
+                if (regAlloc) {
+                    if ((regAlloc & 1) && regAlloc <= 9)
+                        add(" Reg:%s", reg[(regAlloc - 3) / 2]);
+                    else if (!(regAlloc & 1) && 0x12 <= regAlloc && regAlloc <= 0x16)
+                        add(" Reg:%s", regPair[(regAlloc - 0x12) / 2]);
+                    else
+                        add(" Reg:%02X", regAlloc);
+                }
 
                 if (namespc <= 5) {
                     if (namespc == 0 && scope != 1 || (namespc > 0 && scope != 2)) {
@@ -549,6 +554,6 @@ void omf51k_72(int type) {
         char const *name = getName();
         if (malformed)
             return;
-        add("%s mask=%04X %s", e8 == 1 ? "Public  " : "External", r16, name);
+        add("%s mask=%04X %s", e8 == 0 ? "Public  " : "External", r16, name);
     }
 }

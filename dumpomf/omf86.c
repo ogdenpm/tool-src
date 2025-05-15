@@ -116,8 +116,8 @@ decodeSpec_t omf86Decode[] = {
 bool isValidRec(int spec) {
     if ((recType & 1) == 0)
         return true;
-//    if (spec == OMF51K)
-//        return strchr("\x7\x9\xf\x97\x19", recType);
+    if (spec == OMF51K)
+        return strchr("\x7\xf\x17\x19\x23", recType);
     return strchr("\x8b\x91\x95\x99\xa1\xa3\xb3\xb5\xb7\xc3\xc5\xc9", recType);
 }
 
