@@ -306,16 +306,29 @@ void omf51_12(int type) {
     while (!atEndRec()) {
         startCol(cols);
         if (defTyp < 3) {
-            uint8_t segId   = getu8();
-            uint8_t info    = getu8();
-            uint8_t pad     = type & 1 ? getu8() : 0;   // not sure on this
+            uint8_t segId = getu8();
+            uint8_t info  = getu8();
+            if (type & 1) // fits but may be wrong
+                getu8();
+
             uint32_t offset = getu16();
             uint8_t ti      = getu8();
 
             addField("%s", getName());
-            if (type == 0x22 && segId == 0 && offset <= 7)
-                addField("R%d+", offset);
-            else
+            if (type == 0x22 && segId == 0 && info == 2 && offset && (offset < 8 || offset == 0x82)) {
+                addField("Reg: ");
+                if (offset == 1)
+                    add("R1-R3");
+                else if (offset == 0x82)
+                    add("DPTR");
+                else if (ti < 4)    // 1 byte value
+                    add("R%d", offset);
+                else if (ti < 13)   // <= float. if < 6 then 2 byte value else 4 byte value
+                    add("R%d-R%d", offset, ti < 6 ? offset + 1 : offset + 3);
+                else
+                    add("%d+", offset);
+
+            } else
                 addField("%s:%04X", getIndexName(ISEG, segId), offset);
             if (defTyp < 2) {
                 if (type != 0x12)
@@ -325,7 +338,8 @@ void omf51_12(int type) {
                 segInfo51(info);
         } else {
             uint8_t segId   = getu8();
-            uint8_t pad     = type & 1 ? getu8() : 0;
+            if (type & 1)   // fits but may be wrong
+                getu8();
             uint32_t offset = getu16();
             addField("%s:%04X", getIndexName(ISEG, segId), offset);
             addField("#%d", getu16()); // line number
@@ -389,7 +403,7 @@ void omf51k_20(int type) {
     static char *scopes[]     = { "[0]", "Global", "Specific", "Stack" };
     static uint8_t sizes[]    = { 3, 1, 2, 0, 1, 2 };
     static char *reg[]        = { "R3", "R5,R3", "R7,R5,R3", "R1/R2/R3" };
-    static char *regPair[]    = { "R2/R3",  "R4/R5,R2/R2", "R6/R7,R4/R5,R2/R3" };
+    static char *regPair[]    = { "DPTR", "R2/R3",  "R4/R5,R2/R2", "R6/R7,R4/R5,R2/R3" };
 
     uint16_t typeIndex        = 32;
     while (!atEndRec() && !malformed) {
@@ -441,7 +455,10 @@ void omf51k_20(int type) {
             break;
         case 0x26: // bitfield
             val = getu8();
-            add("Bitfield: [%02X] offset=%d", val, getu8());
+            if (val <= 1)
+                add("Bitfield: %s offset=%d", val == 0 ? "8-Bit " : "16-Bit", getu8());
+            else
+                add("Bitfield: [%02X] offset=%d", val, getu8());
             add(" width=%d", getu8());
             break;
 
@@ -467,14 +484,14 @@ void omf51k_20(int type) {
                 if (regAlloc) {
                     if ((regAlloc & 1) && regAlloc <= 9)
                         add(" Reg:%s", reg[(regAlloc - 3) / 2]);
-                    else if (!(regAlloc & 1) && 0x12 <= regAlloc && regAlloc <= 0x16)
-                        add(" Reg:%s", regPair[(regAlloc - 0x12) / 2]);
+                    else if (!(regAlloc & 1) && 0x10 <= regAlloc && regAlloc <= 0x16)
+                        add(" Reg:%s", regPair[(regAlloc - 0x10) / 2]);
                     else
                         add(" Reg:%02X", regAlloc);
                 }
 
                 if (namespc <= 5) {
-                    if (namespc == 0 && scope != 1 || (namespc > 0 && scope != 2)) {
+                    if ((namespc == 0 && scope != 1) || (namespc > 0 && scope != 2)) {
                         if (scope <= 3)
                             add(" %s", scopes[scope]);
                         else
