@@ -30,13 +30,9 @@
 #define stricmp strcasecmp
 #endif
 
-_Noreturn void usage(char *fmt, ...);
-_Noreturn void error(char *fmt, ...);
-void warning(char *fmt, ...);
-
 void setOMFRec(image_t *image, int outFormat);
 void insertJmpEntry();
-int saveFile(char *s, image_t *image);
+int saveFile(char const *s, image_t *image);
 
-int parseHex(char *s, char **end);
-void patchfile(char *s, image_t *image);
+int parseHex(char const *s, char const **end);
+void patchfile(char const *s, image_t *image);

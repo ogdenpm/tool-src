@@ -25,6 +25,7 @@
 #include <string.h>
 // abstool.h should be after std includes
 #include "abstool.h"
+#include "utility.h"
 
 #ifndef min
 #define min(a,b)   ((a) <= (b) ? (a) : (b))
@@ -72,7 +73,7 @@
  *      MASK        sets the MASK value f or AOMF51 (low 4 bits only)
  *
  *  and value is one of
- *      fileFormat, used for TARGET and SOURCVE
+ *      fileFormat, used for TARGET and SOURCE
  *          AOMF51   - Intel absolute OMF for 8051
  *          AOMF85   - Intel absolute OMF for 8080/8085
  *          AOMF96   - Intel absolute OMF for 8096
@@ -107,19 +108,19 @@ typedef struct {
     int repeatCnt;
 } value_t;
 
-char *skipSpc(char *s) {
+char const *skipSpc(char const *s) {
     while (*s == ' ' || *s == '\t')
         s++;
     return s;
 }
 
-char *skipEqu(char *s) {
+char const *skipEqu(char const *s) {
     while (*(s = skipSpc(s)) == '=')
         s++;
     return s;
 }
 
-int parseHex(char *s, char **end) {
+int parseHex(char const *s, char const **end) {
     int val = 0;
     s       = skipSpc(s);
     if (isxdigit(*s)) {
@@ -134,7 +135,7 @@ int parseHex(char *s, char **end) {
     return val;
 }
 
-char *parseToken(char *s, value_t *val) {
+char const *parseToken(char const *s, value_t *val) {
     static char simple[]        = "-=\n";
     static uint8_t stype[]      = { DEINIT, SKIP, EOL };
     static char const escchar[] = "abfnrtv'\"\\";
@@ -183,17 +184,17 @@ char *parseToken(char *s, value_t *val) {
                 } else if (*s == 'x') {
                     int n;
                     if ((n = parseHex(s + 1, &s)) < 0) {
-                        warning("Patch file string \\x missing value using 0\n");
+                        warn("Patch file string \\x missing value using 0\n");
                         n = 0;
                     } else if (n > 255)
-                        warning("\\x%X is too large, using \\x%X\n", n, n & 0xff);
+                        warn("\\x%X is too large, using \\x%X\n", n, n & 0xff);
                     val->str[len + 1] = (uint8_t)n;
                 } else if (isdigit(*s)) {
                     int n = 0;
                     for (int i = 0; i < 3 && '0' <= *s && *s <= '7'; s++)
                         n = n * 8 + *s - '0';
                     if (n > 255)
-                        warning("\\%o value is too large, using \\%o\n", n, n & 0xff);
+                        warn("\\%o value is too large, using \\%o\n", n, n & 0xff);
                     val->str[len + 1] = (uint8_t)n;
                 } else {
                     if (!isprint(*s)) {
@@ -233,7 +234,7 @@ char *parseToken(char *s, value_t *val) {
 // sets the parsed information in *val (a value_t)
 // returns a pointer to the next character to parse
 
-char *getRepeat(char *s, value_t *val) {
+char const *getRepeat(char const *s, value_t *val) {
     value_t rept;
     s = skipSpc(s);
     if (tolower(*s) == 'x') {
@@ -249,7 +250,7 @@ char *getRepeat(char *s, value_t *val) {
     return s;
 }
 
-char *getValue(char *s, value_t *val) {
+char const *getValue(char const *s, value_t *val) {
     value_t opt;
 
     s = parseToken(s, val);
@@ -336,11 +337,11 @@ unsigned fill(image_t *image, int addr, value_t *val, bool appending) {
     for (int i = 0; i < val->repeatCnt; i++) {
         if (appending) {
             if (addr >= MAXMEM + MAXAPPEND) {
-                warning("Too much append data");
+                warn("Too much append data");
                 break;
             }
         } else if (addr >= MAXMEM) {
-            warning("Patching above 0xffff");
+            warn("Patching above 0xffff");
             break;
         }
 
@@ -370,10 +371,9 @@ unsigned fill(image_t *image, int addr, value_t *val, bool appending) {
     return addr;
 }
 
-void patchfile(char *fname, image_t *image) {
+void patchfile(char const *fname, image_t *image) {
     char line[256];
     value_t val;
-    char *s;
     int addr      = -1;
     bool append   = false;
     image->padLen = 0; // ignore any input file padding
@@ -384,7 +384,8 @@ void patchfile(char *fname, image_t *image) {
         return;
     }
 
-    while (fgets(s = line, 256, fp)) {
+    while (fgets(line, 256, fp)) {
+        char const *s = line;
         if (!append)
             addr = -1;
 
@@ -400,13 +401,13 @@ void patchfile(char *fname, image_t *image) {
                 }
                 break;
             case TARGET:
-                if (image->target != val.hval)
-                    warning("patch file was written for target %s not %s",
+                if (image->target != (int)val.hval)
+                    warn("patch file was written for target %s not %s",
                             tokens[val.hval - APPEND], tokens[image->target - APPEND]);
                 break;
             case SOURCE:
-                if (image->source != val.hval)
-                    warning("patch file was written for %s source not %s",
+                if (image->source != (int)val.hval)
+                    warn("patch file was written for %s source not %s",
                             tokens[val.hval - APPEND], tokens[image->source - APPEND]);
                 break;
             case NAME:
@@ -429,13 +430,13 @@ void patchfile(char *fname, image_t *image) {
                     image->name[0] = val.str[0];
                 break;
             case LOAD:
-                if (image->mLoad != val.hval)
-                    warning("patch file was written for %04XH load address not %04XH", val.hval,
+                if (image->mLoad != (int)val.hval)
+                    warn("patch file was written for %04XH load address not %04XH", val.hval,
                             image->mLoad);
                 break;
             case START:
-                if (image->mStart >= 0 && image->mStart != val.hval)
-                    warning("overriding start location to %04XH from %04XH", val.hval,
+                if (image->mStart >= 0 && image->mStart != (int)val.hval)
+                    warn("overriding start location to %04XH from %04XH", val.hval,
                             image->mStart);
                 // fallthrough
             case TRN:
@@ -447,14 +448,16 @@ void patchfile(char *fname, image_t *image) {
             case STARTADDR:
                 val.hval = image->mStart;
                 val.type = HEXWORD;
+                // fallthrough
             case HEXBYTE:
             case HEXWORD:
                 if (addr < 0) {
                     addr = val.hval;
                     if (val.repeatCnt != 1)
-                        error("Repeat count invalid for patch address");
+                        fatal("Repeat count invalid for patch address");
                     break;
                 }
+                // fallthrough
             case STRING:
             case SKIP:
             case DEINIT:

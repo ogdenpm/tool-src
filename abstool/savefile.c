@@ -25,6 +25,7 @@
 #include <stdlib.h>
 // abstool.h should be after std includes
 #include "abstool.h"
+#include "utility.h"
 
 #ifndef min
 #define min(a,b)   ((a) <= (b) ? (a) : (b))
@@ -124,7 +125,7 @@ void writeModHdr(FILE *fp, image_t *image) {
     case AOMF85:
         OMFName(image->name);
         if (image->mTrn > 3) {
-            warning("Invalid AOMF85 TRN %02XH", image->mTrn);
+            warn("Invalid AOMF85 TRN %02XH", image->mTrn);
             image->mTrn = -1;
         }
         OMFByte(image->mTrn >= 0 ? image->mTrn : 0);
@@ -133,7 +134,7 @@ void writeModHdr(FILE *fp, image_t *image) {
     case AOMF51:
         OMFName(image->name);
         if (image->mTrn >= 0 && image->mTrn < 0xfd) {
-            warning("Invalid AOMF85 TRN %02XH", image->mTrn);
+            warn("Invalid AOMF85 TRN %02XH", image->mTrn);
             image->mTrn = -1;
         }
         OMFByte(image->mTrn >= 0 ? image->mTrn : 0xff);
@@ -142,7 +143,7 @@ void writeModHdr(FILE *fp, image_t *image) {
     case AOMF96:
         OMFName(image->name);
         if (image->mTrn > 3) {
-            warning("Invalid AOMF85 TRN %02XH", image->mTrn);
+            warn("Invalid AOMF85 TRN %02XH", image->mTrn);
             image->mTrn = 0;
         }
         OMFByte(image->mTrn >= 0 ? image->mTrn : 0);
@@ -179,16 +180,16 @@ void writeModEnd(FILE *fp, image_t *image) {
     }
 }
 
-int saveFile(char *file, image_t *image) {
+int saveFile(char const *file, image_t *image) {
     FILE *fp;
     bool isOk = true;
     int addr;
 
     if (image->high == image->low)
-        error("Nothing to save");
+        fatal("Nothing to save");
 
     if ((fp = fopen(file, "wb")) == NULL)
-        error("can't create output file %s\n", file);
+        fatal("can't create output file %s\n", file);
 
     if (image->target == IMAGE) {
         isOk = fputblock(fp, image, image->low, image->high);
@@ -223,7 +224,7 @@ int saveFile(char *file, image_t *image) {
     }
 
     if (isOk && image->padLen) // apply any padding
-        isOk = fwrite(&image->mem[image->high], 1, image->padLen, fp) == image->padLen;
+        isOk = (int)fwrite(&image->mem[image->high], 1, image->padLen, fp) == image->padLen;
 
     fclose(fp);
     if (!isOk)

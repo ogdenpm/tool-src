@@ -29,13 +29,8 @@
 // local includes after std includes
 #include "abstool.h"
 #include "image.h"
-#include "showversion.h"
+#include "utility.h"
 
-#ifdef _WIN32
-#define DIRSEP "\\/"
-#else
-#define DIRSEP "/"
-#endif
 
 /*
  * abstool is and extension to the previous hex2bin and obj2bin tools
@@ -46,73 +41,25 @@
  * See patch.c or the documentation for the patch file format
  */
 
-char *invokedBy;
-
 image_t inFile;
 
-_Noreturn void usage(char *fmt, ...) {
-
-    if (fmt) {
-        va_list args;
-        va_start(args, fmt);
-        fprintf(stderr, "Usage error: ");
-        vfprintf(stderr, fmt, args);
-        putc('\n', stderr);
-        va_end(args);
-    }
-    fprintf(
-        fmt ? stderr : stdout,
-        "Usage: %s [-v|-V|-h] |  [-l addr] [-a|-a51|-a85|-a96|-h|-i] infile [[patchfile] outfile]\n"
-        "Where -v/-V   provide version information\n"
-        "      -h      shows this help, if it is the only option\n"
-        "      -l addr override the load address for binary images, default is 100H (CP/M)\n"
-        "      -a51    produce AOMF51 file, note no symbols or debug info\n"
-        "      -a|-a85 produce AOMF85 file, note no symbols or debug info\n"
-        "      -a96    produce AOMF96 file, note no symbols or debug info\n"
-        "      -h      produce Intel Hex file, note no symbols\n"
-        "      -i      produce Intel ISIS I bin file\n"
+char const help[] =
+        "Usage: %s [-v|-V|-h] | [-l addr] [-a|-a51|-a85|-a96|-h|-i] -p patchfile -o outfile infile+\n"
+        "Where:\n"
+        "-l addr  override the load address for binary images, default is 100H (CP/M)\n"
+        "         subsequent binary images are concatenated\n"
+        "-a51     produce AOMF51 file, note no symbols or debug info\n"
+        "-a|-a85  produce AOMF85 file, note no symbols or debug info\n"
+        "-a96     produce AOMF96 file, note no symbols or debug info\n"
+        "-h       produce Intel Hex file, note no symbols\n"
+        "-i       produce Intel ISIS I bin file\n"
+        "-p file  specify patch file\n"
+        "-o file  specify output file, if omitted only a summary of infile is produced\n"
         "File format can be AOMF51, AOMF85, AOMF96, Intel Hex, Intel ISIS I Bin or binary image\n"
-        "The last format specified is used, default is binary image\n"
-        "If outfile is omitted, only a summary of the infile is produced\n",
-        invokedBy);
-    exit(1);
-}
-
-_Noreturn void error(char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    fprintf(stderr, "Error: ");
-    vfprintf(stderr, fmt, args);
-    putc('\n', stderr);
-    va_end(args);
-    exit(1);
-}
-
-void warning(char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    fprintf(stderr, "Warning: ");
-    vfprintf(stderr, fmt, args);
-    putc('\n', stderr);
-    va_end(args);
-}
-
-char *getInvokeName(char *path) {
-    char *s;
-#ifdef _WIN32
-    if (path[0] && path[1] == ':') // skip leading device
-        path += 2;
-#endif
-    while ((s = strpbrk(path, DIRSEP))) // skip all directory components
-        path = s + 1;
-    s = strrchr(path, '.');
-    if (s && stricmp(s, ".exe") == 0)
-        *s = '\0';
-    return path;
-}
+        "The last format specified is used, default is binary image\n";
 
 void resetMeta(image_t *image) {
-    for (int i = 0; i < sizeof(image->meta) / sizeof(image->meta[0]); i++)
+    for (int i = 0; i < (int)sizeof(image->meta) / (int)sizeof(image->meta[0]); i++)
         image->meta[i] = -1;
 }
 
@@ -120,24 +67,20 @@ int main(int argc, char **argv) {
     resetMeta(&inFile);
     inFile.target = IMAGE;
     inFile.mLoad  = 0x100;
+    char const *patch   = NULL;
+    char const *outfile = NULL;
 
-    invokedBy = getInvokeName(argv[0]);
-
-    CHK_SHOW_VERSION(argc, argv);
-    if (argc == 2 && strcmp(argv[1], "-h") == 0)
-        usage(NULL);
-
-    while (argc >= 2 && argv[1][0] == '-') {
-        switch (argv[1][1]) {
+    while (getOpt(argc, argv, "l:a*hip:o:") != EOF) {
+        switch (optOpt) {
         case 'a':
-            if (strcmp(argv[1], "-a51") == 0)
+            if (strcmp(optArg, "51") == 0)
                 inFile.target = AOMF51;
-            else if (strcmp(argv[1], "-a96") == 0)
+            else if (strcmp(optArg, "96") == 0)
                 inFile.target = AOMF96;
-            else if (strcmp(argv[1], "-a") == 0 || strcmp(argv[1], "-a85") == 0)
+            else if (!*optArg || strcmp(optArg, "85") == 0)
                 inFile.target = AOMF85;
             else
-                usage("Unknown option %s\n", argv[1]);
+                usage("Unknown option AOMF format -a%s", optArg);
             break;
         case 'h':
             inFile.target = HEX;
@@ -146,34 +89,41 @@ int main(int argc, char **argv) {
             inFile.target = ISISBIN;
             break;
         case 'l':
-            if (argc < 3 || (inFile.mLoad = parseHex(argv[2], NULL)) < 0)
-                usage("-l option missing address");
-            argc--, argv++;
+            if ((inFile.mLoad = parseHex(optArg, NULL)) < 0)
+                usage("Bad address for -l option");
+            break;
+        case 'p':
+            patch = optArg;
+            break;
+        case 'o':
+            outfile = optArg;
             break;
         default:
-            usage("Unknown option %s\n", argv[1]);
+            if (optOpt & MISSINGARG)
+                usage("Missing argument for option -%c", optOpt & 0xff);
+            else
+                usage("Unknown option %c", optOpt);
             break;
         }
-        argc--;
-        argv++;
     }
-
-    if (argc < 2 || argc > 4)
-        usage("Incorrect number of files");
-
-    if (loadFile(argv[1], &inFile)) {
-        if (argc == 2)
-            return EXIT_SUCCESS;
-        if (argc == 3 && inFile.source == inFile.target)
-            error("Nothing to do. Input and output files same format with no patching");
+    int inCount = 0;
+    while (optInd < argc) {
+        if (!loadFile(argv[optInd], &inFile))
+            fatal("Problem loading input file %s", argv[optInd]);
+        optInd++;
+        inCount++;
+    }
+    if (inCount == 0)
+        usage("No input files specified");
+    if (outfile) {
+        if (!patch && inCount == 1 && inFile.source == inFile.target)
+            fatal("Nothing to do. Input and output files same format with no patching");
         if (inFile.source <= AOMF96 && inFile.target <= AOMF96 && inFile.source != inFile.target)
-            warning("Did you mean to convert between AOMFxx file formats");
-        if (argc == 4)
-            patchfile(argv[2], &inFile);
+            warn("Did you mean to convert between AOMFxx file formats");
+        if (patch)
+            patchfile(patch, &inFile);
     
-        return saveFile(argv[argc - 1], &inFile);
-    } else {
-        fprintf(stderr, "Nothing loaded\n");
-        return EXIT_FAILURE;
+        return saveFile(outfile, &inFile);
     }
+    return EXIT_SUCCESS;
 }
