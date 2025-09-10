@@ -20,29 +20,30 @@
  *                                                                          *
  ****************************************************************************/
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #ifdef _MSC_VER
 #include <direct.h>
 #define mkdir(p, m) _mkdir(p)
 #else
-#include <unistd.h>
 #include <limits.h>
-#define _MAX_PATH PATH_MAX
+#include <unistd.h>
+#define _MAX_PATH  PATH_MAX
 #define _MAX_FNAME PATH_MAX
 #endif
+#include <stdarg.h>
+#include <stdbool.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <stdbool.h>
-#include <stdarg.h>
 
-#include "showVersion.h"
+#include "utility.h"
 
-_Noreturn void usage(char *fmt, ...);
-char *invokedBy;
+#define MAX_LINE 512
 
-#define MAX_LINE    512
+char const help[] =
+    "Usage: %s [-r] [file]\n"
+    "Where -r unpacks recursively\n";
 
 // nested files are added to the end of the list below
 // this allows for multiple levels of nesting
@@ -52,11 +53,10 @@ typedef struct _nested {
 } nested_t;
 nested_t *nestedFiles = NULL;
 
-
 void addNestedFile(char *file) {
     nested_t *p = malloc(sizeof(nested_t));
-    p->next = NULL;
-    p->file = strdup(file);
+    p->next     = NULL;
+    p->file     = strdup(file);
     if (nestedFiles == NULL)
         nestedFiles = p;
     else {
@@ -66,8 +66,6 @@ void addNestedFile(char *file) {
         q->next = p;
     }
 }
-
-
 
 char *defaultIn() {
     char path[_MAX_PATH + 1];
@@ -89,17 +87,17 @@ FILE *newFile(char *parent, char *fname) {
     char path[_MAX_PATH];
     FILE *fp;
 
-    if (*fname == '/' || *fname == '\\')        // rooted filename
+    if (*fname == '/' || *fname == '\\') // rooted filename
         strcpy(path, fname);
     else {
-        strcpy(path, parent);                   // assume start directory is same as parent
+        strcpy(path, parent); // assume start directory is same as parent
         char *fpart = path;
         for (char *s = path; (s = strpbrk(s, "\\/")); s++)
             fpart = s + 1;
         strcpy(fpart, fname);
     }
 
-    if ((fp = fopen(path, "wt")) == NULL) {     // try to create
+    if ((fp = fopen(path, "wt")) == NULL) { // try to create
         // see if the problem is missing directories
         for (char *s = path; (s = strpbrk(s, "\\/")); s++) {
             *s = 0;
@@ -109,13 +107,12 @@ FILE *newFile(char *parent, char *fname) {
         fp = fopen(path, "wt");
     }
     if (fp == NULL) {
-        fprintf(stderr, "can't create %s\n", path);
+        warn("Can't create %s - using stdout", path);
         fp = stdout;
     } else
         printf("%s\n", path);
     return fp;
 }
-
 
 void unpack(char *fname) {
     char line[MAX_LINE];
@@ -123,9 +120,9 @@ void unpack(char *fname) {
     bool isnested = false;
     FILE *fpin;
     FILE *fpout = stdout;
-    *curfile = 0;
+    *curfile    = 0;
     if ((fpin = fopen(fname, "rt")) == NULL)
-       usage("can't open %s\n", fname);
+        usage("can't open %s", fname);
 
     while (fgets(line, MAX_LINE, fpin)) {
         if (*line == '\f') {
@@ -140,12 +137,12 @@ void unpack(char *fname) {
                 if (fpout != stdout)
                     fclose(fpout);
                 char *s;
-                for (s = line + 1; (s = strchr(s, '`')); s++)   // replace escaped spaces
+                for (s = line + 1; (s = strchr(s, '`')); s++) // replace escaped spaces
                     *s = ' ';
                 if ((s = strchr(line + 1, '\n')))
                     *s = 0;
                 strcpy(curfile, line + 1);
-                fpout = newFile(fname, curfile);
+                fpout    = newFile(fname, curfile);
                 isnested = false;
             }
         } else
@@ -156,45 +153,31 @@ void unpack(char *fname) {
     fclose(fpin);
 }
 
-
-_Noreturn void usage(char *fmt, ...) {
-    if (fmt) {
-        va_list args;
-        va_start(args, fmt);
-        vfprintf(stderr, fmt, args);
-        va_end(args);
-    }
-    fprintf(stderr, "\nUsage: %s -v | -V | [-r] [file]\n", invokedBy);
-
-    exit(1);
-}
-
-
-
 int main(int argc, char **argv) {
     char *infile;
     bool recurse = false;
-    invokedBy = argv[0];
 
-    CHK_SHOW_VERSION(argc, argv);
-
-    while (--argc > 0 && **++argv == '-') {
-        if (strcmp(*argv, "-r") == 0)
+    while (getOpt(argc, argv, "r") != EOF) {
+        switch (optOpt) {
+        case 'r':
             recurse = true;
-        else
-            fprintf(stderr, "ignoring unknown option %s\n", *argv);
+            break;
+        default:
+            usage("Unknown option -%c", optOpt & 0xff);
+        }
     }
-    if (argc > 1)
-        usage(NULL);
 
-    if (argc == 1)
+    if (optInd == argc)
+        infile = defaultIn();
+    else if (optInd + 1 == argc)
         infile = *argv;
     else
-        infile = defaultIn();
+        usage("Too many input files");
+
     unpack(infile);
     if (recurse)
-        while (nestedFiles) {   // rely on OS to clean up memory
+        while (nestedFiles) { // rely on OS to clean up memory
             unpack(nestedFiles->file);
             nestedFiles = nestedFiles->next;
-    }
+        }
 }
