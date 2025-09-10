@@ -27,7 +27,7 @@
 #include <string.h>
 #include <stdarg.h>
 
-#include "showVersion.h"
+#include "utility.h"
 char *invokedBy;
 
 enum {
@@ -731,6 +731,7 @@ void printCompiler(int compiler, int version)
     case 1: printf("PLM_%d.%d", version / 16, version % 16); return;
     case 2: printf("FORT_%d.%d", version / 16, version % 16); return;
     case 0: if (version == 0) return;
+    // fallthrough
     default: printf("%02X_%02X", compiler, version);
     }
 }
@@ -849,22 +850,7 @@ void cmpModule(omf_t *lomf, omf_t *romf)
     deleteModule(rm);
 }
 
-
-_Noreturn void usage(char *fmt, ...) {
-
-    if (fmt) {
-        va_list args;
-        va_start(args, fmt);
-        vfprintf(stderr, fmt, args);
-        va_end(args);
-    }
-    fprintf(stderr, "\nUsage: %s -v | -V | file1 file2\n", invokedBy);
-
-    exit(1);
-}
-
-
-
+char const help[] = "Usage: %s file1 file2";
 
 
 
@@ -873,7 +859,7 @@ int main(int argc, char **argv)
     file_t *left, *right;
     invokedBy = argv[0];
 
-    CHK_SHOW_VERSION(argc, argv);
+    chkStdOptions(argc, argv);
     if (argc != 3)
         usage(NULL);
 

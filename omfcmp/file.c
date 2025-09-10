@@ -40,7 +40,7 @@ file_t *newFile(char *fn)
         fi = (file_t *)xmalloc(sizeof(file_t));
         fi->image = (byte *)xmalloc(fileSize);
 
-        if (fread(fi->image, 1, fileSize, fp) != fileSize) {
+        if ((int)fread(fi->image, 1, fileSize, fp) != fileSize) {
             fprintf(stderr, "error reading %s\n", fn);
             free(fi->image);
             free(fi);
