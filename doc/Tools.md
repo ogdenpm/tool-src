@@ -10,20 +10,25 @@ Note prebuilt 32bit Windows versions of these tools along and additional tools f
 
 This is a general purpose tool for converting between a number of absolute file formats and optionally applying patches. It subsumes obj2bin, which is now depreciated.
 
+**10-Sep-2025: Note to allow multiple input files the command line syntax has changed. Patch file and output file must now be specified with the appropriate option rather than implied as the last one/two files**.
+
 ```
 Usage:
-abstool [-v|-V|-h] |  [-l addr] [-a|-a51|-a85|-a96|-h|-i] infile [[patchfile] outfile]
-Where -v/-V   provide version information
-      -h      shows this help, if it is the only option
-      -l addr override the load address for binary images, default is 100H (CP/M)
-      -a51    produce AOMF51 file, note no symbols or debug info
-      -a|-a85 produce AOMF85 file, note no symbols or debug info
-      -a96    produce AOMF96 file, note no symbols or debug info
-      -h      produce Intel Hex file, note no symbols
-      -i      produce Intel ISIS I bin file
+abstool [-l addr] [-a|-a51|-a85|-a96|-h|-i] -p patchfile -o outfile infile+
+Where:
+-l addr  override the load address for binary images, default is 100H (CP/M)
+         subsequent binary images are concatenated
+-a51     produce AOMF51 file, note no symbols or debug info
+-a|-a85  produce AOMF85 file, note no symbols or debug info
+-a96     produce AOMF96 file, note no symbols or debug info
+-h       produce Intel Hex file, note no symbols
+-i       produce Intel ISIS I bin file
+-p file  specify patch file
+-o file  specify output file, if omitted only a summary of infile is produced
 File format can be AOMF51, AOMF85, AOMF96, Intel Hex, Intel ISIS I Bin or binary image
 The last format specified is used, default is binary image
-If outfile is omitted, only a summary of the infile is produced
+
+Also supports single arguments -v, -V for version info and -h for help
 ```
 
 The optional patch file has contains lines which are interpreted int one of two modes, PATCH and APPEND, with PATCH being the initial mode
@@ -309,9 +314,30 @@ usage: version [-h] | [-q] [-f] [-a appid] [CACHE_PATH OUT_FILE]
  a C/C++ header file is generated.
 ```
 
+### wcat extended cat file
+
+```
+usage: wcat [options] file*
+Concatenate files, or use standard input if no file is specified
+Options are:
+-b[n]    Binary copy. If n present force append at 2^n boundary
+-o file  Write to specified file, default is standard output in option is omitted
+Default copy mode is text. Converting line endings to \r\n and stopping at ^Z
+
+Also supports single arguments -v, -V for version info and -h for help
+
+With the -b option by default the binary files are concatenated without a gap, the optional n value modifies this and adds zero byte padding to make sure the file is added at a 2^n boundary e.g.
+-b1		forces word alignment
+-b4		forces 16 byte paragraph alignment
+-b7		forces 128 byte alignment - e.g. ISIS sector
+-b8		forces 256 byte alignment
+```
+
+
+
 ------
 
 ```
-Updated by Mark Ogden 7-Feb-2024
+Updated by Mark Ogden 10-Sep-2025
 ```
 
