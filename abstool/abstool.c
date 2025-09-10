@@ -44,7 +44,7 @@
 image_t inFile;
 
 char const help[] =
-        "Usage: %s [-v|-V|-h] | [-l addr] [-a|-a51|-a85|-a96|-h|-i] -p patchfile -o outfile infile+\n"
+        "Usage: %s [-l addr] [-a|-a51|-a85|-a96|-h|-i] -p patchfile -o outfile infile+\n"
         "Where:\n"
         "-l addr  override the load address for binary images, default is 100H (CP/M)\n"
         "         subsequent binary images are concatenated\n"
