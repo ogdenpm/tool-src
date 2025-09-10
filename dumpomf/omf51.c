@@ -149,16 +149,18 @@ void symInfo51(uint8_t n, bool keil) { // Max width = 6 + 5 + 4 + 7 = 22
 }
 
 void omf51_02(int type) {
+    (void)type;
     char const *trnName[] = { "ASM51", "PL/M-51", "RL51", "Bad TRN" };
 
     init51();
     char const *modName = getName();
     uint8_t trn         = getu8();
     getu8();
-    add("%s - %s", modName, trn > -0xfd ? trnName[trn - 0xfd] : trnName[3]);
+    add("%s - %s", modName, trn > 0xfd ? trnName[trn - 0xfd] : trnName[3]);
 }
 
 void omf51_04(int type) {
+    (void)type;
     char const *modName = getName();
     getu16();
     uint8_t regMsk = getu8();
@@ -189,7 +191,7 @@ void omf51_08(int type) {
 
     static field_t const header[] = { { "Loc", 4 }, { "FixupOp(Target)", WFIXUP51 }, { NULL } };
     int cols                      = addReptHeader(header);
-
+    (void)type;
     while (!atEndRec()) {
         startCol(cols);
         addField("%04X", getu16()); // loc
@@ -268,7 +270,7 @@ void omf51_0E(int type) {
 
 void omf51_10(int type) {
     char const *scope[] = { "MODULE", "DO", "PROCEDURE", "MODULE END", "DO END", "PROCEDURE END" };
-
+    (void)type;
     uint8_t blkTyp      = getu8();
     char const *blkName = getName();
     add("%s: ", blkName);
@@ -315,15 +317,16 @@ void omf51_12(int type) {
             uint8_t ti      = getu8();
 
             addField("%s", getName());
-            if (type == 0x22 && segId == 0 && info == 2 && offset && (offset < 8 || offset == 0x82)) {
+            if (type == 0x22 && segId == 0 && info == 2 && offset &&
+                (offset < 8 || offset == 0x82)) {
                 addField("Reg: ");
                 if (offset == 1)
                     add("R1-R3");
                 else if (offset == 0x82)
                     add("DPTR");
-                else if (ti < 4)    // 1 byte value
+                else if (ti < 4) // 1 byte value
                     add("R%d", offset);
-                else if (ti < 13)   // <= float. if < 6 then 2 byte value else 4 byte value
+                else if (ti < 13) // <= float. if < 6 then 2 byte value else 4 byte value
                     add("R%d-R%d", offset, ti < 6 ? offset + 1 : offset + 3);
                 else
                     add("%d+", offset);
@@ -337,8 +340,8 @@ void omf51_12(int type) {
             } else
                 segInfo51(info);
         } else {
-            uint8_t segId   = getu8();
-            if (type & 1)   // fits but may be wrong
+            uint8_t segId = getu8();
+            if (type & 1) // fits but may be wrong
                 getu8();
             uint32_t offset = getu16();
             addField("%s:%04X", getIndexName(ISEG, segId), offset);
@@ -403,9 +406,10 @@ void omf51k_20(int type) {
     static char *scopes[]     = { "[0]", "Global", "Specific", "Stack" };
     static uint8_t sizes[]    = { 3, 1, 2, 0, 1, 2 };
     static char *reg[]        = { "R3", "R5,R3", "R7,R5,R3", "R1/R2/R3" };
-    static char *regPair[]    = { "DPTR", "R2/R3",  "R4/R5,R2/R2", "R6/R7,R4/R5,R2/R3" };
+    static char *regPair[]    = { "DPTR", "R2/R3", "R4/R5,R2/R2", "R6/R7,R4/R5,R2/R3" };
 
-    uint16_t typeIndex        = 32;
+    (void)type;
+    uint16_t typeIndex = 32;
     while (!atEndRec() && !malformed) {
         startCol(1);
         uint8_t subtype = getu8();
@@ -519,7 +523,8 @@ void omf51k_20(int type) {
         }
     }
 }
-void omf51k_24(int type) {
+void omf51k_24(int unused) {
+    (void)unused;
     uint32_t zeros   = getu24();
     char const *name = getName();
     if (!malformed) {
@@ -535,8 +540,9 @@ void addTime(time_t *timestamp) {
         tm->tm_hour, tm->tm_min, tm->tm_sec);
 }
 
-void omf51k_70(int type) {
+void omf51k_70(int unused) {
     static char *types[] = { "Output", "Input", "Include", "Script", "Object" };
+    (void)unused;
     while (!atEndRec() && !malformed) {
         uint8_t type = getu8();
         startCol(1);
@@ -563,7 +569,8 @@ void omf51k_70(int type) {
     }
 }
 
-void omf51k_72(int type) {
+void omf51k_72(int unused) {
+    (void)unused;
     while (!atEndRec() && !malformed) {
         startCol(1);
         uint8_t e8       = getu8();

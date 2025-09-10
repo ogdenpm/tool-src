@@ -434,7 +434,8 @@ void commentClassA0() {
     }
 }
 
-void omf86_6E(int type) { // RHEADR
+void omf86_6E(int unused) { // RHEADR
+    (void)unused;
     char const *modType[]   = { "ABS", "REL", "PIC", "LTL" };
     ofield_t const header[] = { { 0, "Segments" },     { 10, "Groups" },       { 18, "Overlays" },
                                 { 33, "Static Size" }, { 52, "Dynamic Size" }, { 0, NULL } };
@@ -465,7 +466,8 @@ void omf86_6E(int type) { // RHEADR
         add("-%X", maxDynamic);
 }
 
-void omf86_70(int type) { // REGINT
+void omf86_70(int unused) { // REGINT
+    (void)unused;
     char const *regs[] = { "CS,IP", "SS,SP", "DS", "ES" };
 
     while (!atEndRec()) {
@@ -482,15 +484,18 @@ void omf86_70(int type) { // REGINT
         }
     }
 }
-void omf86_72(int type) { // REDATA
+void omf86_72(int unused) { // REDATA
+    (void)unused;
     base86();
     hexDump(getu16(), strchr("\x9c\x9d", peekNextRecType()) != NULL);
 }
-void omf86_74(int type) { // RIDATA
+void omf86_74(int unused) { // RIDATA
+    (void)unused;
     base86();
     iData86(getu16());
 }
-void omf86_76(int type) { // OVLDEF
+void omf86_76(int unused) { // OVLDEF
+    (void)unused;
     char const *name = getName();
     uint32_t loc     = getu32();
     uint8_t sa       = getu8();
@@ -501,12 +506,14 @@ void omf86_76(int type) { // OVLDEF
     if (sa & 2)
         add(" Adjacent(%s)", getIndexName(IOVERLAY, getIndex()));
 }
-void omf86_78(int type) { // ENDREC
+void omf86_78(int unused) { // ENDREC
+    (void)unused;
     uint8_t endTyp = getu8();
     add("%s", endTyp == 0 ? "Overlay" : endTyp == 1 ? "Block" : "(Illegal)");
 }
 
-void omf86_7A(int type) { // BLKDEF
+void omf86_7A(int unused) { // BLKDEF
+    (void)unused;
     static ofield_t const header[] = { { 0, "Id" },
                                        { 5, "Base" },
                                        { 45, "Name" },
@@ -541,12 +548,14 @@ void omf86_7A(int type) { // BLKDEF
     if (*name)
         addAt(header[7].tabStop, "#%d", getIndex());
 }
-void omf86_7C(int type) { // BLKEND
+void omf86_7C(int unused) { // BLKEND
+    (void)unused;
 }
 
-void omf86_7E(int type) { // DEBSYM
+void omf86_7E(int unused) { // DEBSYM
+    (void)unused;
     static field_t const header[] = {
-        { "Name", WNAME }, { "Offset" }, {  "Type" }, {  NULL }
+        { "Name", WNAME }, { "Offset", 0 }, {  "Type", 0 }, {  NULL }
     };
     uint8_t frameInfo = getu8();
     uint8_t method    = frameInfo & 7;
@@ -592,25 +601,30 @@ void omf86_7E(int type) { // DEBSYM
         addField("@%d", tindex);
     }
 }
-void omf86_80(int type) { // THEADR
+void omf86_80(int unused) { // THEADR
+    (void)unused;
     add(getName());
 }
 
-void omf86_82(int type) { // LHEADR
+void omf86_82(int unused) { // LHEADR
+    (void)unused;
     add(getName());
 }
 
-void omf86_84(int type) { // PEDATA
+void omf86_84(int unused) { // PEDATA
+    (void)unused;
     uint16_t frame = getu16();
     add("Frame:%04X", frame);
     hexDump(getu8(), strchr("\x9c\x9d", peekNextRecType()) != NULL);
 }
 
-void omf86_86(int type) { // PIDATA
+void omf86_86(int unused) { // PIDATA
+    (void)unused;
     add("Frame:%04X", getu16());
     iData86(getu8());
 }
-void omf86_88(int type) { // COMENT
+void omf86_88(int unused) { // COMENT
+    (void)unused;
     static ofield_t const headerA7[] = { { 0, "Segment" }, { 0, NULL } };
     static ofield_t const headerA8[] = { { 0, "Weak Ext" },
                                          { WNAME86, "Default Ext" },
@@ -637,9 +651,9 @@ void omf86_88(int type) { // COMENT
         break;
     case 1:
         add("Intel Copyright");
+        break;
     case 0x9c:
         add("MS-DOS Version");
-        break;
         break;
     case 0x9d:
         add("Memory Model");
@@ -722,7 +736,8 @@ void omf86_88(int type) { // COMENT
         commentStr();
 }
 
-void omf86_8A(int type) { // MODEND
+void omf86_8A(int unused) { // MODEND
+    (void)unused;
     uint8_t modTyp = getu8();
     if (modTyp & 0x80)
         add("Main Module");
@@ -737,8 +752,9 @@ void omf86_8A(int type) { // MODEND
     }
     init86();
 }
-void omf86Ext(int type) { // EXTDEF
-    field_t const header[] = { { "Id", 4 }, { "Name", WNAME }, { "Type" }, { NULL } };
+void omf86Ext(int unused) { // EXTDEF
+    (void)unused;
+    field_t const header[] = { { "Id", 4 }, { "Name", WNAME }, { "Type", 0 }, { NULL } };
     int cols               = addReptHeader(header);
     while (!atEndRec()) {
         startCol(cols);
@@ -749,14 +765,16 @@ void omf86Ext(int type) { // EXTDEF
         addField("@%d", getIndex()); // external type
     }
 }
-void omf86_8E(int type) { // TYPDEF
+void omf86_8E(int unused) { // TYPDEF
+    (void)unused;
     add("%s", getName());
     add("#%d ", typeIndex++);
     descriptor86();
 }
 
-void omf86PubLoc(int type) { // PUBDEF / LOCSYM
-    static field_t const header[] = { { "Offset" }, { "Type" }, { "Name", WNAME }, { NULL } };
+void omf86PubLoc(int unused) { // PUBDEF / LOCSYM
+    (void)unused;
+    static field_t const header[] = { { "Offset", 0 }, { "Type" , 0}, { "Name", WNAME }, { NULL } };
     base86();
     if (atEndRec())
         return;
@@ -770,12 +788,14 @@ void omf86PubLoc(int type) { // PUBDEF / LOCSYM
     }
 }
 
-void omf86_94(int type) { // LINNUM
+void omf86_94(int unused) { // LINNUM
+    (void)unused;
     base86();
     omfLINNUM();
 }
 
-void omf86Names(int type) { // LNAMES
+void omf86Names(int unused) { // LNAMES
+    (void)unused;
     field_t const header[] = { { "Id", 4 }, { "Name", WNAME }, { NULL } };
     int cols               = addReptHeader(header);
     while (!atEndRec()) {
@@ -870,7 +890,8 @@ void omf86_98(int type) { // SEGDEF
     else if (segAttr & 1)
         add(" InPage");
 }
-void omf86_9A(int type) { // GRPDEF
+void omf86_9A(int unused) { // GRPDEF
+    (void)unused;
     static ofield_t const header[] = { { 0, "Component" }, { 0, NULL } };
 
     char const *grpName            = getIndexName(INAME, getIndex());
@@ -917,7 +938,8 @@ void omf86_9A(int type) { // GRPDEF
         }
     }
 }
-void omf86_9C(int type) { // FIXUPP
+void omf86_9C(int unused) { // FIXUPP
+    (void)unused;
     static ofield_t const header[] = { { 0, "Locat" },
                                        { 6, "Mode" },
                                        { 19, "Method" },
@@ -961,9 +983,10 @@ int communalLen() {
     return 0;
 }
 
-void omf86Com(int type) { // COMDEF
+void omf86Com(int unused) { // COMDEF
+    (void)unused;
     static field_t const header[] = {
-        { "Communal Name", WNAME }, { "Type" }, { "Length" }, { NULL }
+        { "Communal Name", WNAME }, { "Type", 0 }, { "Length", 0 }, { NULL }
     };
     int cols = addReptHeader(header);
     while (!atEndRec()) {
@@ -984,7 +1007,8 @@ void omf86Com(int type) { // COMDEF
         }
     }
 }
-void omf86_B2(int type) { // BAKPAT
+void omf86_B2(int unused) { // BAKPAT
+    (void)unused;
 }
 // LEXTDEF
 
@@ -992,8 +1016,9 @@ void omf86_B2(int type) { // BAKPAT
 
 // LCOMDEF
 
-void omf86_BC(int type) { // CEXTDEF
-    field_t const header[] = { { "Id", 4 }, { "Type" }, { "Name", WNAME }, { NULL } };
+void omf86_BC(int unused) { // CEXTDEF
+    (void)unused;
+    field_t const header[] = { { "Id", 4 }, { "Type", 0 }, { "Name", WNAME }, { NULL } };
     int cols               = addReptHeader(header);
     while (!atEndRec()) {
         startCol(cols);
@@ -1006,11 +1031,13 @@ void omf86_BC(int type) { // CEXTDEF
         addField("%s", name);
     }
 }
-void omf86_C2(int type) { // COMDAT
+void omf86_C2(int unused) { // COMDAT
+    (void)unused;
 }
 
-void omf86_C4(int type) { // LINSYM
-    static field_t const header[] = { { "Offset" }, { "Line", 5 }, { NULL } };
+void omf86_C4(int unused) { // LINSYM
+    (void)unused;
+    static field_t const header[] = { { "Offset", 0 }, { "Line", 5 }, { NULL } };
 
     uint8_t flags                 = getu8();
     add(" %s%s", omfFlavour == IBM ? getName() : getIndexName(INAME, getIndex()),
@@ -1024,7 +1051,8 @@ void omf86_C4(int type) { // LINSYM
         addField("+%d", lineNum);
     }
 }
-void omf86_C6(int type) { // ALIAS
+void omf86_C6(int unused) { // ALIAS
+    (void)unused;
     static field_t const header[] = { { "Alias", WNAME }, { "Substitute", WNAME }, { NULL } };
     int cols                      = addReptHeader(header);
     while (!atEndRec()) {
@@ -1034,9 +1062,10 @@ void omf86_C6(int type) { // ALIAS
     }
 }
 
-void omf86_C8(int type) { // NBKPAT
+void omf86_C8(int unused) { // NBKPAT
+    (void)unused;
     static char const *locname[]  = { "Byte", "Word", "DWord" };
-    static field_t const header[] = { { "Offset" }, { "Value" }, { NULL } };
+    static field_t const header[] = { { "Offset", 0 }, { "Value", 0 }, { NULL } };
 
     uint8_t locTyp                = getu8();
     add("%s", locTyp < 2 || (is32bit && locTyp == 2) ? locname[locTyp] : "???");
@@ -1053,11 +1082,13 @@ void omf86_C8(int type) { // NBKPAT
 
 // LLNAMES
 
-void omf86_CC(int type) { // VERNUM
+void omf86_CC(int unused) { // VERNUM
+    (void)unused;
     add("v%s", getName());
 }
 
-void omf86_CE(int type) { // VENDEXT
+void omf86_CE(int unused) { // VENDEXT
+    (void)unused;
     add("vendor %d Extension Info:", getu8());
     hexDump(0, false);
 }

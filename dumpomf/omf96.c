@@ -247,7 +247,7 @@ void descriptor96() {
             return;
         if (isFirst) {
             pattern = 0;
-            for (int i = 0; i < sizeof(firsts) / sizeof(firsts[0]); i++)
+            for (int i = 0; i < (int)sizeof(firsts) / (int)sizeof(firsts[0]); i++)
                 if (firsts[i].nleaf == leaf) {
                     pattern = firsts[i].pat;
                     break;
@@ -309,7 +309,8 @@ void descriptor96() {
     }
 }
 
-void omf96_02(int type) { // MODHDR
+void omf96_02(int unused) { // MODHDR
+    (void)unused;
     static char const *trnName[]  = { "ASM-96",  "PL/M-96", "C-96",    "UNK3-96",
                                       "UNK4-96", "UNK5-96", "UNK6-96", "ANY-96" };
     static char const *specName[] = { "OMF96 v1.4", "OMF96 v1.?", "OMF96 v2.0", "OMF96 v3.0",
@@ -330,24 +331,28 @@ void omf96_02(int type) { // MODHDR
         add(" - %s", timeStr);
 }
 
-void omf96_04(int type) { // MODEND
+void omf96_04(int unused) { // MODEND
+    (void)unused;
     uint8_t mtype    = getu8();
     uint8_t validity = getu8();
 
     add("%s%s", mtype & 1 ? "Main " : "", validity & 1 ? "Invalid" : "");
 }
 
-void omf96_06(int type) {
+void omf96_06(int unused) {
+    (void)unused;
     segId96(getu8());
     hexDump(getu16(), peekNextRecType() == FIXUP96);
 }
 
-void omf96_08(int type) { // LINNUM
+void omf96_08(int unused) { // LINNUM
+    (void)unused;
     segId96(getu8());
     omfLINNUM();
 }
 
-void omf96_0A(int type) { // BLKDEF
+void omf96_0A(int unused) { // BLKDEF
+    (void)unused;
     field_t const doHeader[] = {
         { "Location", WSEGID96 + 5 }, { "Size", 4 }, { "Type", WTYPEREF96 }, { NULL }
     };
@@ -356,7 +361,7 @@ void omf96_0A(int type) { // BLKDEF
                                    { "Type", WTYPEREF96 },
                                    { "Frame", (MAXNAME > WSEGID96 ? MAXNAME : WSEGID96) + 5 },
                                    { "RetOff", 8 },
-                                   { "PrologSize" },
+                                   { "PrologSize", 0 },
                                    { NULL } };
 
     char const *name           = getName();
@@ -389,7 +394,8 @@ void omf96_0A(int type) { // BLKDEF
     }
 }
 
-void omf96_0C(int type) { // BLKEND
+void omf96_0C(int unused) { // BLKEND
+    (void)unused;
 }
 
 void omf96_10(int type) { // ANCESTOR
@@ -399,8 +405,9 @@ void omf96_10(int type) { // ANCESTOR
         omf96_20(type); // process the seg defs
 }
 
-void omf96_12_16(int type) { // LOCAL/PUBLIC SYMBOLS
-    field_t const header[] = { { "Offset" }, { "Name", WNAME }, { "Type", WTYPEREF96 }, { NULL } };
+void omf96_12_16(int unused) { // LOCAL/PUBLIC SYMBOLS
+    (void)unused;
+    field_t const header[] = { { "Offset", 0 }, { "Name", WNAME }, { "Type", WTYPEREF96 }, { NULL } };
     uint8_t segId          = getu8();
 
     segId96(segId);
@@ -413,8 +420,9 @@ void omf96_12_16(int type) { // LOCAL/PUBLIC SYMBOLS
     }
 }
 
-void omf96_14(int type) { // TYPEDEFS
-    field_t const header[] = { { "Index" }, { "Definition", WTYPEDEF96 }, { NULL } };
+void omf96_14(int unused) { // TYPEDEFS
+    (void)unused;
+    field_t const header[] = { { "Index", 0 }, { "Definition", WTYPEDEF96 }, { NULL } };
     int cols               = addReptHeader(header);
 
     while (!atEndRec()) {
@@ -424,7 +432,8 @@ void omf96_14(int type) { // TYPEDEFS
     }
 }
 
-void omf96_18(int type) { // EXTERNAL SYMBOLS
+void omf96_18(int unused) { // EXTERNAL SYMBOLS
+    (void)unused;
     field_t const header[] = { { "Id", 4 }, { "Type", WTYPEREF96 }, { "Name", WNAME }, { NULL } };
     uint8_t segId          = getu8();
 
@@ -443,9 +452,10 @@ void omf96_18(int type) { // EXTERNAL SYMBOLS
     }
 }
 
-void omf96_20(int type) { // SEGDEF
+void omf96_20(int unused) { // SEGDEF
+    (void)unused;
     static char const *relocNames[] = { "Byte", "Word", "Long", "????" };
-    static field_t const header[] = { { "SegId", WSEGID96 }, { "Reloc", 8 }, { "Size" }, { NULL } };
+    static field_t const header[] = { { "SegId", WSEGID96 }, { "Reloc", 8 }, { "Size", 0 }, { NULL } };
 
     int cols                      = addReptHeader(header);
     while (!atEndRec()) {
@@ -460,9 +470,10 @@ void omf96_20(int type) { // SEGDEF
     }
 }
 
-void omf96_22(int type) { // FIXUP
+void omf96_22(int unused) { // FIXUP
+    (void)unused;
     static field_t const header[] = { { "Type", 15 },
-                                      { "Align" },
+                                      { "Align" , 0},
                                       { "Value", (MAXNAME > WSEGID96 ? MAXNAME : WSEGID96) + 5 },
                                       { NULL } };
 

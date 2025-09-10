@@ -106,7 +106,8 @@ void loadCommonNames() {
     loadRec();
 }
 
-void omf85_02(int type) {
+void omf85_02(int unused) {
+    (void)unused;
     char const *trnName[]         = { "UKN80", "PL/M-80", "FORT80" };
     static field_t const header[] = { { "Segment", WNAME }, { "Size", 4 }, { "Align", 8 }, { NULL } };
 
@@ -127,7 +128,8 @@ void omf85_02(int type) {
     }
 }
 
-void omf85_04(int type) {
+void omf85_04(int unused) {
+    (void)unused;
     uint8_t modTyp  = getu8();
     uint8_t segId   = getu8();
     uint16_t offset = getu16();
@@ -140,19 +142,21 @@ void omf85_04(int type) {
     init85();
 }
 
-void omf85_06(int type) {
+void omf85_06(int unused) {
+    (void)unused;
     add("Seg[%s] ", getIndexName(ISEG, getu8()));
     /* dump the content, adding offset info if fixup follows */
     hexDump(getu16(), false);
 }
 
-void omf85_08(int type) { // LINNUM
+void omf85_08(int unused) { // LINNUM
+    (void)unused;
     add("Seg[%s] ", getIndexName(ISEG, getu8()));
     omfLINNUM();
 }
 
 void omfLINNUM() {
-    static field_t const header[] = { { "Offset" }, { "Line", 5}, { NULL } };
+    static field_t const header[] = { { "Offset" , 0}, { "Line", 5}, { NULL } };
 
     int cols = addReptHeader(header);
     while (!atEndRec()) {
@@ -162,16 +166,18 @@ void omfLINNUM() {
     }
 }
 
-void omfEOF(int type) {
+void omfEOF(int unused) {
+    (void)unused;
 }
 
-void omf85_10(int type) {
+void omf85_10(int unused) {
+    (void)unused;
     add("%s", getName());
 }
 
-void omf85_12_16(int type) {
-    static field_t const header[] = { { "Offset" }, { "Name", WNAME }, { NULL } };
-
+void omf85_12_16(int unused) {
+    static field_t const header[] = { { "Offset", 0 }, { "Name", WNAME }, { NULL } };
+    (void)unused;
     add("Seg[%s]", getIndexName(ISEG, getu8()));
     int cols = addReptHeader(header);
     while (!atEndRec()) {
@@ -182,8 +188,9 @@ void omf85_12_16(int type) {
     }
 }
 
-void omf85_18(int type) {
-    static field_t const header[] = { {"Index" }, { "Name", WNAME }, { NULL } };
+void omf85_18(int unused) {
+    (void)unused;
+    static field_t const header[] = { {"Index", 0 }, { "Name", WNAME }, { NULL } };
     int cols                       = addReptHeader(header);
 
     while (!atEndRec()) {
@@ -196,8 +203,9 @@ void omf85_18(int type) {
     }
 }
 
-void omf85_20(int type) {
-    static field_t const header[] = { { "Offset" }, { "Name", WNAME }, { NULL } };
+void omf85_20(int unused) {
+    (void)unused;
+    static field_t const header[] = { { "Offset", 0}, { "Name", WNAME }, { NULL } };
 
     uint8_t hilo                   = getu8();
 
@@ -212,7 +220,7 @@ void omf85_20(int type) {
     }
 }
 void omf85_22_24(int type) {
-    static field_t const header[] = { { "Offset" }, { NULL } };
+    static field_t const header[] = { { "Offset",0 }, { NULL } };
 
     uint8_t segId                  = type == 0x24 ? getu8() : 0;
     uint8_t hilo                   = getu8();
@@ -227,8 +235,9 @@ void omf85_22_24(int type) {
     }
 }
 
-void omfLIBLOC(int type) {
-    static field_t const header[] = { { "Module"}, { "Block:Byte" }, { NULL } };
+void omfLIBLOC(int unused) {
+    (void)unused;
+    static field_t const header[] = { { "Module", 0}, { "Block:Byte", 0 }, { NULL } };
     int cols = addReptHeader(header);
 
     while (!atEndRec()) {
@@ -240,7 +249,8 @@ void omfLIBLOC(int type) {
     }
 }
 
-void omfLIBNAM(int type) {
+void omfLIBNAM(int unused) {
+    (void)unused;
     static field_t const header[] = { { "Mod", 5 }, { "Name", WNAME }, { NULL } };
     int cols                       = addReptHeader(header);
 
@@ -250,7 +260,8 @@ void omfLIBNAM(int type) {
         addField("%s", getName());
     }
 }
-void omfLIBDIC(int type) {
+void omfLIBDIC(int unused) {
+    (void)unused;
     static field_t const header[] = { { "Mod", 5 }, { "Name", WNAME }, { NULL } };
     int cols                        = addReptHeader(header);
     bool start = true;
@@ -274,7 +285,8 @@ void omfLIBDIC(int type) {
     }
     malformed = !start;
 }
-void omfLIBHDR(int type) {
+void omfLIBHDR(int unused) {
+    (void)unused;
     uint16_t mcount = getu16();
     uint16_t block  = getu16();
     uint16_t byte   = getu16();
@@ -282,7 +294,8 @@ void omfLIBHDR(int type) {
     locIdx = namIdx = dicIdx = 0;
 }
 
-void omf85_2E(int type) {
+void omf85_2E(int unused) {
+    (void)unused;
     static field_t const header[] = { { "Id", 4 }, { "Name", WNAME }, {  NULL } };
     int cols = addReptHeader(header);
     while (!atEndRec()) {

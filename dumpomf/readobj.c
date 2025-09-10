@@ -168,7 +168,7 @@ int detectOMF() {
 
         if (trn < 3)
             return malformed ? OMFUKN : OMF85;
-        if (0xfd <= trn && trn <= 0xff)
+        if (trn >= 0xfd)
             return OMF51;
         if (strchr("\x04\x06\x20\x24\x26\x40\x44\x46\xe0\xe4\xe6", trn & 0xfe))
             return OMF96;

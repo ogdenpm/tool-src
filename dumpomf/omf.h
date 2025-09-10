@@ -126,7 +126,6 @@ void setIndex(uint8_t tableIdx, uint16_t idx, char const *name);
 char const *getIndexName(uint8_t tableIdx, uint16_t idx);
 
 /* main.c */
-_Noreturn void usage(char const *s);
 int loadRec(void);
 int getrec(void);
 bool atEndRec(void);

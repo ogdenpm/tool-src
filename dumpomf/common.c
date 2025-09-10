@@ -163,6 +163,7 @@ void Log(char const *fmt, ...) {
 }
 
 void invalidRecord(int type) {
+    (void)type;
     hexDump(0, false);
 }
 

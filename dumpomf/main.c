@@ -32,7 +32,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "showVersion.h"
+#include "utility.h"
 
 typedef unsigned char byte;
 typedef unsigned short address;
@@ -49,12 +49,8 @@ bool rawMode              = false;
 FILE *src;
 FILE *dst;
 
-_Noreturn void usage(char const *s) {
-    if (s && *s)
-        fputs(s, stderr);
-    fprintf(stderr, "usage: %s -v | -V | [-r] objfile [outputfile]\n", invoke);
-    exit(1);
-}
+char const help[] = "Usage: %s [-r] objfile [outputfile]\n"
+                    "Where -r dumps raw record information";
 
 void dumprec(FILE *fpout, bool isGood);
 
@@ -136,23 +132,24 @@ void displayFile(int spec) {
 
 int main(int argc, char **argv) {
     int spec;
-
-    invoke = argv[0];
-    CHK_SHOW_VERSION(argc, argv);
+    
+    chkStdOptions(argc, argv);
 
     if (argc > 1 && strcmp(argv[1], "-r") == 0) {
         argc--, argv++;
         rawMode = true;
     }
 
-    if (argc < 2 || (src = fopen(argv[1], "rb")) == NULL)
-        usage("can't open input file\n");
+    if (argc < 2)
+        usage("No file specified");
+    if ((src = fopen(argv[1], "rb")) == NULL)
+        usage("Can't open input file");
 
     if (argc != 3 || (dst = fopen(argv[2], "w")) == NULL)
         dst = stdout;
 
     if ((spec = detectOMF()) == OMFUKN)
-        fprintf(stderr, "%s cannot determine OMF spec\n", argv[1]);
+        warn("%s cannot determine OMF spec", argv[1]);
     displayFile(spec);
     fclose(dst);
     fclose(src);
