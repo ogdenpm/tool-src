@@ -26,7 +26,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <stdint.h>
-#include "showversion.h"
+#include "utility.h"
 
 
 enum {
@@ -356,48 +356,47 @@ bool loadOmf286(FILE *fp) {
     return true;
 }
 
-void usage() {
-    fprintf(stderr, "usage: aomf2bin -v | -V | option* infile [outfile | -o odd_outfile | -e even_outfile]+\n"
+char const help[] =
+            "Usage: %s option* infile [outfile | -o odd_outfile | -e even_outfile]+\n"
             "   supported options are\n"
             "   -b address - sets base address of rom\n"
             "   -p         - pads image to eprom boundary\n"
-            "   -v / -V    - show version info and exit\n"
-            "   -z         - sets uninitialsed data to 0 instead of 0xff\n");
-    exit(1);
-
-}
+            "   -z         - sets uninitialsed data to 0 instead of 0xff\n";
 
 int main(int argc, char **argv) {
     FILE *fp;
     unsigned char magic;
     bool loaded = false;
     bool pad = false;
-    int arg;
     int fill = 0xff;
 
-    CHK_SHOW_VERSION(argc, argv);
-
-    for (arg = 1; arg < argc; arg++) {
-        if (strcmp(argv[arg], "-b") == 0 && arg + 1 < argc) {
+    while (getOpt(argc, argv, "b:pz") != EOF) {
+        switch (optOpt) {
+        case 'b':
             char tailch;
-            int itemcnt = sscanf(argv[++arg], "%X%c", &base, &tailch);
-            if (itemcnt == 0 || (itemcnt == 2 && toupper(tailch) != 'H')) {
-                fprintf(stderr, "invalid base address %s\n", argv[arg]);
-                usage();
-            }
-        } else if (strcmp(argv[arg], "-p") == 0)
-            pad = true;
-        else if (strcmp(argv[arg], "-z") == 0)
-            fill = 0;
-        else
+            int itemcnt = sscanf(optArg, "%X%c", &base, &tailch);
+            if (itemcnt == 0 || (itemcnt == 2 && toupper(tailch) != 'H'))
+                usage("Invalid base address %s", optArg);
             break;
+        case 'p':
+            pad = true;
+            break;
+        case 'z':
+            fill = 0;
+            break;
+        default:
+            if (optOpt & MISSINGARG)
+                usage("Missing argument for option -%c", optOpt & 0xff);
+            usage("Unknown option -%c", optOpt & 0xff);
+        }
     }
-    if (arg >= argc || *argv[arg] == '-')
-        usage();
-    if ((fp = fopen(argv[arg], "rb")) == NULL) {
-        fprintf(stderr, "can't open input file %s\n", argv[arg]);
-        exit(1);
-    }
+    if (optInd == argc)
+        usage("Missing input file on command line");
+
+    if ((fp = fopen(argv[optInd], "rb")) == NULL)
+        fatal("Can't open input file %s", argv[optInd]);
+
+    optInd++;
     memset(rom, fill, MAXROM);      // set default uninitialised
 
     magic = getc(fp);               // peek at the magic header byte
@@ -408,14 +407,14 @@ int main(int argc, char **argv) {
     case 0xA2: loaded = loadOmf286(fp); break;
     case ':':
         ungetc(':', fp);
+        // fallthrough
     case ' ':
     case '\t':
         loaded = loadHex(fp);
         break;
     default:
-        fprintf(stderr, "unknown file format marker %02X\n", magic);
         fclose(fp);
-        exit(1);
+        fatal("Unknown file format marker %02X", magic);
     }
 
     if (loaded) {                   // if good load generate the bin files
@@ -427,22 +426,21 @@ int main(int argc, char **argv) {
                 ;
             toprom = i;
         }
-        for (arg++; arg < argc; arg++) {
-            if (strcmp(argv[arg], "-o") == 0) {       // odd bytes
+        while (optInd < argc) {
+            if (strcmp(argv[optInd], "-o") == 0) {       // odd bytes
                 select = ODD;
-                arg++;
-            } else if (strcmp(argv[arg], "-e") == 0) {    // even bytes
+                optInd++;
+            } else if (strcmp(argv[optInd], "-e") == 0) {    // even bytes
                 select = EVEN;
-                arg++;
-            } else if (*argv[arg] == '-')
-                usage();
+                optInd++;
+            } else if (*argv[optInd] == '-')
+                usage("File or -o file or -e file expected");
             else
                 select = ALL;
-            if (arg == argc) {
-                fprintf(stderr, "missing filename on command line\n");
-                usage();
-            }
-            if (!dump(select, argv[arg]))         // generate bin file
+            if (optInd == argc)
+                usage("Missing filename on command line");
+
+            if (!dump(select, argv[optInd++]))         // generate bin file
                 return 1;
         }
         return 0;
