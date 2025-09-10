@@ -1,6 +1,6 @@
 SHELL=bash
 .PHONY: clean distclean install rebuild
-DIRS = abstool aomf2bin dumpomf fixobj genpatch omfcmp plmpp unpack wcat
+DIRS = abstool aomf2bin dumpomf fixobj genpatch omfcmp plmpp unpack wcat utility
 all:
 	@for f in $(DIRS); do $(MAKE) -C $$f || exit 1; done;
 
