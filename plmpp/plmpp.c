@@ -20,36 +20,35 @@
  *                                                                          *
  ****************************************************************************/
 
-#include <stdio.h>
 #include "getopt.h"
-#include <string.h>
-#include <stdlib.h>
+#include "utility.h"
 #include <ctype.h>
-#include <stdbool.h>
 #include <stdarg.h>
-#include "showVersion.h"
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 char *invokedBy;
 
 #ifdef _MSC_VER
-#define strdup  _strdup
+#define strdup _strdup
 #else
 #define _stricmp strcasecmp
 #endif
 
-
 FILE *openIsisFile(const char *isisName, char *mode);
 
-#define MAX_ID		31
-#define MAX_INCLUDE	10
-#define MAXLINE		256
+#define MAX_ID      31
+#define MAX_INCLUDE 10
+#define MAXLINE     256
 
-
-char line[MAXLINE];			/* input line */
-char cline[MAXLINE];		/* used to rebuild control line with $IF $SET $RESET and possibly $INCLUDE removed */
-char *ts;					/* token start pointer in line including leading space */
-char *inCh;					/* input character pointer in buffer */
-char *outCh;					/* current point in rebuild control line */
+char line[MAXLINE];  /* input line */
+char cline[MAXLINE]; /* used to rebuild control line with $IF $SET $RESET and possibly $INCLUDE
+                        removed */
+char *ts;            /* token start pointer in line including leading space */
+char *inCh;          /* input character pointer in buffer */
+char *outCh;         /* current point in rebuild control line */
 
 typedef unsigned char byte;
 typedef unsigned short word;
@@ -57,25 +56,37 @@ typedef unsigned short word;
 enum types {
     EOL = 0,
     INCLUDE,
-    SET, RESET,
-    IF, ELSE, ELSEIF, ENDIF,
-    LT, LE, EQ, NE, GE, GT,
-    AND, OR, XOR, NOT,
-    LP, RP, COMMA,
-    ID, NUMBER, STRING,
+    SET,
+    RESET,
+    IF,
+    ELSE,
+    ELSEIF,
+    ENDIF,
+    LT,
+    LE,
+    EQ,
+    NE,
+    GE,
+    GT,
+    AND,
+    OR,
+    XOR,
+    NOT,
+    LP,
+    RP,
+    COMMA,
+    ID,
+    NUMBER,
+    STRING,
     BAD
 };
-
 
 struct {
     char *str;
     int yyval;
-} keywords[] = {
-    { "INCLUDE", INCLUDE }, { "SET", SET }, { "RESET", RESET },
-    { "IF", IF }, { "ELSE", ELSE }, { "ELSEIF", ELSEIF }, { "ENDIF", ENDIF },
-    { "AND", AND }, { "OR", OR }, { "XOR", XOR }, { "NOT", NOT }, { 0, 0}
-};
-
+} keywords[] = { { "INCLUDE", INCLUDE }, { "SET", SET },       { "RESET", RESET }, { "IF", IF },
+                 { "ELSE", ELSE },       { "ELSEIF", ELSEIF }, { "ENDIF", ENDIF }, { "AND", AND },
+                 { "OR", OR },           { "XOR", XOR },       { "NOT", NOT },     { 0, 0 } };
 
 typedef struct _symbol_t {
     struct _symbol_t *next;
@@ -90,41 +101,43 @@ struct {
     FILE *fp;
 } incFile[MAX_INCLUDE + 1];
 
-int incDepth = -1;	/* first file makes this depth 0*/
-int flatten;		/* max depth of includes allowed */
-FILE *inFP;			/* current input file */
-FILE *outFP;		/* file to write to */
+int incDepth = -1; /* first file makes this depth 0*/
+int flatten;       /* max depth of includes allowed */
+FILE *inFP;        /* current input file */
+FILE *outFP;       /* file to write to */
 
-symbol_t *lookup(char *symbol)
-{
+char const help[] = "Usage: %s options* srcfile\n"
+                    "Where options are:\n"
+                    " -f            flatten includes to this level (each -f increases level)\n"
+                    " -F            flatten all includes\n"
+                    " -sVAR[=val]   set symbol VAR to val (default 1) for conditional compilation\n"
+                    " -rVAR         reset symbol VAR to 0\n"
+                    " -o outfile    specify output file (default stdout)\n";
+
+symbol_t *lookup(char *symbol) {
     symbol_t *p;
 
     for (p = head; p; p = p->next)
         if (_stricmp(symbol, p->symbol) == 0)
             return p;
     /* doesn't exist so create symbol */
-    p = (symbol_t *)malloc(sizeof(symbol_t));
-    p->next = head;
+    p         = (symbol_t *)malloc(sizeof(symbol_t));
+    p->next   = head;
     p->symbol = strdup(symbol);
-    p->value = 0;
-    head = p;
+    p->value  = 0;
+    head      = p;
     return p;
 }
 
-
-void setSym(char *symbol, int value)
-{
+void setSym(char *symbol, int value) {
     lookup(symbol)->value = value;
 }
 
-int getSym(char *symbol)
-{
+int getSym(char *symbol) {
     return lookup(symbol)->value;
 }
 
-
-int pushInc(char *filename)
-{
+int pushInc(char *filename) {
     FILE *fp;
 
     if (incDepth >= flatten)
@@ -138,9 +151,8 @@ int pushInc(char *filename)
     return 1;
 }
 
-int popInc()
-{
-    if (incDepth <= 0)		/* file 0 is original file so pop this and there is no file */
+int popInc() {
+    if (incDepth <= 0) /* file 0 is original file so pop this and there is no file */
         return 0;
     fclose(inFP);
     free(incFile[incDepth--].filename);
@@ -151,16 +163,14 @@ int popInc()
 char token[MAX_ID + 1];
 int tokenVal;
 
-
-int parseNum()
-{
+int parseNum() {
     char *t;
     char *s;
     int radix = 10;
     int val, digit;
 
     s = token;
-    t = strchr(s, 0) - 1;	/* point to last character */
+    t = strchr(s, 0) - 1; /* point to last character */
 
     if (*t == 'H')
         radix = 16;
@@ -187,18 +197,16 @@ int parseNum()
     return val;
 }
 
-
-int getToken()
-{
+int getToken() {
     int i = 0;
 
-    ts = inCh;
+    ts    = inCh;
     while (*inCh == ' ' || *inCh == '\t')
         inCh++;
     if (!*inCh)
         return EOL;
     if (isalpha(*inCh) || *inCh == '_') {
-        while (isalnum(*inCh) || *inCh == '$' || *inCh == '_') {        // make compatible with PLM86
+        while (isalnum(*inCh) || *inCh == '$' || *inCh == '_') { // make compatible with PLM86
             if (*inCh != '$' && i < MAX_ID)
                 token[i++] = toupper(*inCh);
             inCh++;
@@ -226,10 +234,14 @@ int getToken()
         while (*inCh && (*inCh != '\'' || *++inCh == '\''))
             inCh++;
         return STRING;
-    case ',': return COMMA;
-    case '(': return LP;
-    case ')': return RP;
-    case '=': return EQ;
+    case ',':
+        return COMMA;
+    case '(':
+        return LP;
+    case ')':
+        return RP;
+    case '=':
+        return EQ;
     case '<':
         if (*inCh == '>') {
             inCh++;
@@ -244,15 +256,11 @@ int getToken()
             return GT;
         inCh++;
         return GE;
-
     }
     return BAD;
 }
 
-
-
-byte chkNot()
-{
+byte chkNot() {
     byte notStatus = 0;
 
     while (getToken() == NOT)
@@ -261,24 +269,20 @@ byte chkNot()
     return notStatus;
 }
 
-word getIFVal()
-{
+word getIFVal() {
     int type;
 
     if ((type = getToken()) == NUMBER) {
         if (tokenVal > 255)
             fprintf(stderr, "invalid conditional compilation constant\n");
         return tokenVal;
-    }
-    else if (type == ID)
+    } else if (type == ID)
         return getSym(token);
     fprintf(stderr, "invalid conditional compilation parameter\n");
     return 0xffff;
 }
 
-
-byte parseIfCond()
-{
+byte parseIfCond() {
     byte andFactor = 0xff, orFactor = 0, xorFactor = 0;
     byte not1, not2, relOp;
     word val1, val2;
@@ -290,24 +294,36 @@ byte parseIfCond()
 
         relOp = getToken();
         if (relOp < LT || relOp > GT)
-            inCh = ts;	/* prime for reparse */
-        else {			/* we have a rel op so get second value */
+            inCh = ts; /* prime for reparse */
+        else {         /* we have a rel op so get second value */
             not2 = chkNot();
             if ((val2 = getIFVal()) > 255)
                 return 255;
             val2 ^= not2;
             switch (relOp) {
-            case EQ: val1 = (val1 == val2); break;
-            case LT: val1 = (val1 < val2);  break;
-            case LE: val1 = (val1 <= val2); break;
-            case GT: val1 = (val1 > val2);  break;
-            case GE: val1 = (val1 >= val2); break;
-            case NE: val1 = (val1 != val2); break;
+            case EQ:
+                val1 = (val1 == val2);
+                break;
+            case LT:
+                val1 = (val1 < val2);
+                break;
+            case LE:
+                val1 = (val1 <= val2);
+                break;
+            case GT:
+                val1 = (val1 > val2);
+                break;
+            case GE:
+                val1 = (val1 >= val2);
+                break;
+            case NE:
+                val1 = (val1 != val2);
+                break;
             }
         }
-        val1 = andFactor & (not1 ^ val1);
-        andFactor = 0xff;	// reset mask
-        switch (getToken()) { 
+        val1      = andFactor & (not1 ^ val1);
+        andFactor = 0xff; // reset mask
+        switch (getToken()) {
         case EOL:
             return xorFactor ^ (orFactor | val1);
         case OR:
@@ -325,18 +341,14 @@ byte parseIfCond()
     }
 }
 
-
-void skiptoRPorEOL()
-{
+void skiptoRPorEOL() {
     while (*inCh && *inCh != ')')
         inCh++;
     if (*inCh)
         inCh++;
 }
 
-
-void doSetReset(int isSet)
-{
+void doSetReset(int isSet) {
     char varName[MAX_ID + 1];
     int tok;
 
@@ -345,7 +357,6 @@ void doSetReset(int isSet)
         inCh = ts;
         return;
     }
-
 
     do {
         if (getToken() != ID) {
@@ -361,9 +372,8 @@ void doSetReset(int isSet)
                 return;
             }
             setSym(varName, tokenVal);
-        }
-        else {
-            inCh = ts;		/* reparse later */
+        } else {
+            inCh = ts; /* reparse later */
             setSym(token, isSet ? 255 : 0);
         }
     } while ((tok = getToken()) == COMMA);
@@ -371,13 +381,9 @@ void doSetReset(int isSet)
         fprintf(stderr, "bad conditional %s missing , or )\n", line);
         skiptoRPorEOL();
     }
-
 }
 
-
-
-void doInclude()
-{
+void doInclude() {
 
     while (*inCh == ' ' || *inCh == '\t')
         inCh++;
@@ -385,30 +391,25 @@ void doInclude()
         fprintf(stderr, "bad include %s\n", line);
         return;
     }
-    *ts = 0;	/* remove the include from the control line */
-    ts = inCh + 1;
+    *ts = 0; /* remove the include from the control line */
+    ts  = inCh + 1;
     while (*inCh && *inCh != ')')
         inCh++;
     if (*inCh != ')')
         fprintf(stderr, "warning missing ) on include(%s\n", ts);
-    *inCh = 0;	/* will truncate rest of line */
+    *inCh = 0; /* will truncate rest of line */
     pushInc(ts);
 }
-
-
-
-
 
 int ifDepth;
 int skipping;
 int skippingDepth;
 int inIFpart;
 
-void doControl(char *line)
-{
+void doControl(char *line) {
     char *s;
     outCh = cline;
-    inCh = line + 1;		/* past the $ */
+    inCh  = line + 1; /* past the $ */
     int tok;
 
     s = strchr(line, 0) - 1;
@@ -432,18 +433,19 @@ void doControl(char *line)
         return;
     }
 
-
-
-
     while ((tok = getToken()) != EOL) {
         switch (tok) {
-        case SET: doSetReset(1); break;
-        case RESET: doSetReset(0); break;
+        case SET:
+            doSetReset(1);
+            break;
+        case RESET:
+            doSetReset(0);
+            break;
         case IF:
             ifDepth++;
             if ((parseIfCond() & 1) == 0) {
-                skipping = 1;
-                inIFpart = 1;
+                skipping      = 1;
+                inIFpart      = 1;
                 skippingDepth = ifDepth;
             }
             *line = 0;
@@ -453,8 +455,8 @@ void doControl(char *line)
             if (ifDepth == 0)
                 fprintf(stderr, "misplaced else or elseif option\n");
             else {
-                skipping = 1;
-                inIFpart = 0;
+                skipping      = 1;
+                inIFpart      = 0;
                 skippingDepth = ifDepth;
             }
             *line = 0;
@@ -471,22 +473,21 @@ void doControl(char *line)
                 doInclude();
                 break;
             }
-        default: 	/* unused so copy to cline */
+            // fallthrough
+        default: /* unused so copy to cline */
             strncpy(outCh, ts, inCh - ts);
             outCh += inCh - ts;
         }
     }
-    if (outCh == cline)	/* all consumed so no line to outChut */
+    if (outCh == cline) /* all consumed so no line to outChut */
         *line = 0;
-    else {				/* copy back the unused elements after the $ in line*/
+    else { /* copy back the unused elements after the $ in line*/
         strcpy(outCh, "\n");
         strcpy(line + 1, cline);
     }
 }
 
-
-void pp()
-{
+void pp() {
 
     for (;;) {
         while (fgets(line, MAXLINE, inFP)) {
@@ -500,19 +501,14 @@ void pp()
     }
 }
 
+int main(int argc, char **argv) {
 
-int main(int argc, char **argv)
-{
+    char const *outChutfile = NULL;
 
-    char *outChutfile = NULL;
-    int c;
+    strcpy(line, "$"); /* initialise the line so that set / reset can reuse common code*/
 
-    CHK_SHOW_VERSION(argc, argv);
-
-    strcpy(line, "$");			/* initialise the line so that set / reset can reuse common code*/
-
-    while ((c = getopt(argc, argv, "fFo:s:r:")) != -1)
-        switch (c) {
+    while (getOpt(argc, argv, "fFo:s:r:") != EOF)
+        switch (optOpt) {
         case 'f':
             if (++flatten >= MAX_INCLUDE)
                 flatten = MAX_INCLUDE;
@@ -521,31 +517,32 @@ int main(int argc, char **argv)
             flatten = MAX_INCLUDE;
             break;
         case 'o':
-            outChutfile = optarg;
+            outChutfile = optArg;
             break;
         case 's':
             strcat(line, "SET(");
-            strcat(line, optarg);
+            strcat(line, optArg);
             strcat(line, ")");
-        break;
+            break;
         case 'r':
             strcat(line, "RESET(");
-            strcat(line, optarg);
+            strcat(line, optArg);
             strcat(line, ")");
             break;
         case '?':
             return 1;
         default:
-            abort();
-
+            if (optOpt & MISSINGARG)
+                usage("Missing argument for option -%c\n", optOpt & 0xff);
+            else
+                usage("Unknown option -%c\n", optOpt);
         }
 
-    if (argc - optind != 1) {
-        fprintf(stderr, "\nusage: plmpp -v | -V |  [-f] [-F] [-sVAR[=val]] [-rVAR] [-o outfile] srcfile\n");
-        return 1;
-    }
+    if (argc - optInd != 1)
+        usage("Expected single source file");
 
-    if (!pushInc(argv[optind])) {
+
+    if (!pushInc(argv[optInd])) {
         fprintf(stderr, "no file to process\n");
         return 1;
     }
