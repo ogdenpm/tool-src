@@ -3,7 +3,7 @@
   <PropertyGroup Label="Globals">
     <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
     <HasSharedItems>true</HasSharedItems>
-    <ItemsProjectGuid>{8722ec3b-b930-4d3d-bb7c-3ad03cff4954}</ItemsProjectGuid>
+    <ItemsProjectGuid>{18B9CE8F-B8B9-4E06-8A45-126F4949F198}</ItemsProjectGuid>
     <ItemsProjectName>version</ItemsProjectName>
   </PropertyGroup>
   <ItemDefinitionGroup>
@@ -15,13 +15,12 @@
     <ProjectCapability Include="SourceItemsFromImports" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="$(MSBuildThisFileDirectory)_version.c" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)_appinfo.c" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="$(MSBuildThisFileDirectory)_version.rc" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="$(MSBuildThisFileDirectory)appinfo.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)showVersion.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)verInfo.h" />
   </ItemGroup>
 </Project>
