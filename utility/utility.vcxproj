@@ -29,6 +29,7 @@
     <ClCompile Include="showversion.c" />
     <ClCompile Include="stdOption.c" />
     <ClCompile Include="usage.c" />
+    <ClCompile Include="_utility.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="utility.h" />
