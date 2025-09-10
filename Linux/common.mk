@@ -18,7 +18,7 @@ Makefile:
 
 
   TARGET = {target name}
-  OBJS = {list of objects to build} 	- exclude the _version.o file
+  OBJS = {list of objects to build} 	- exclude the _appinfo.o file
 * INCLUDES={optional include dirs} 		- omit if no special include dirs
 * LIBS={optional additional libraries} 	- omit if no special libraries
 * LINKER=g++							- only include for C++ builds
@@ -44,41 +44,51 @@ Targets:
   rebuild 	- runs distclean and then all
 endef
 
-.PHONY: all mkversion clean distclean 
+.PHONY: all mkversion clean distclean publish
 SRCDIR=$(subst /Linux,,$(realpath .))
 ROOT:=$(realpath ../..)
 INSTALLDIR = $(ROOT)/Linux/Install
+LIBS = $(INSTALLDIR)/utility.a
 
-CFLAGS = -O3 -Wall -I$(SRCDIR) -I$(ROOT)/shared $(addprefix -I,$(subst ^,$(ROOT),$(INCLUDES)))
+CFLAGS = -O3 -Wall -Wextra -I$(SRCDIR) -I$(ROOT)/utility -I$(ROOT)/shared $(addprefix -I,$(subst ^,$(ROOT),$(INCLUDES)))
 CXXFLAGS = $(CFLAGS)
-VPATH = $(SRCDIR):$(ROOT)/shared
+VPATH = $(SRCDIR):$(ROOT)/shared:$(ROOT)/utility
 
 LINKER ?= gcc
 
 all: $(TARGET) | $(INSTALLDIR)
-	cp -p $(TARGET) $(INSTALLDIR)
+	install -D -p -t $(INSTALLDIR) $(TARGET)
 
 publish: distclean mkversion
 	$(MAKE)
 
 # check version and force timestamp change so build
 # information is updated
-mkversion:
-	(cd $(SRCDIR); perl $(ROOT)/Scripts/getVersion.pl -W)
+mkversion: $(INSTALLDIR)/getVersion
+	$(INSTALLDIR)/getVersion -f $(SRCDIR) 
 
-_version.o: _version.h _appinfo.h appinfo.h
+$(INSTALLDIR)/getVersion:
+	(cd $(ROOT)/Linux/bootGetVersion; ./mkGetVersion)
 
-$(SRCDIR)/_version.h:
-	(cd $(SRCDIR); perl $(ROOT)/Scripts/getVersion.pl -W)
+$(INSTALLDIR)/utility.a:
+	$(MAKE) -C $(ROOT)/Linux/utility utility.a
 
-$(TARGET): $(OBJS) _version.o $(LIBS)
+
+$(SRCDIR)/_version.h: $(INSTALLDIR)/getVersion
+	$(INSTALLDIR)/getVersion -f $(SRCDIR)
+
+ifndef OWNTARGET
+$(TARGET): $(OBJS) _appinfo.o $(LIBS)
 	$(LINKER) -o $@ $^
+endif
+
+_appinfo.o: _appinfo.h _version.h verInfo.h
 
 clean:
 	rm -f *.o
 
 distclean: clean
-	rm -f $(TARGET)
+	rm -f $(TARGET) _version.h
 
 rebuild: distclean
 	$(MAKE)
@@ -86,4 +96,4 @@ rebuild: distclean
 $(INSTALLDIR):
 	mkdir $@
 
-_version.o: _version.c showVersion.h appinfo.h 
+
