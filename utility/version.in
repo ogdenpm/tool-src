@@ -1,0 +1,2 @@
+[_utility.c]
+char utilityLib[] ="utility library version: @V@ Released: @D@";
