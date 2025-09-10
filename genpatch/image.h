@@ -95,5 +95,3 @@ typedef struct {
 extern int loadAddr;
 
 bool loadFile(char *s, image_t *image);
-_Noreturn void error(char *fmt, ...);
-void warning(char *fmt, ...);

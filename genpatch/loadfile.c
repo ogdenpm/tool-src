@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "utility.h"
 
 #ifndef min
 #define min(a, b) ((a) <= (b) ? (a) : (b))
@@ -88,7 +89,7 @@ int readOMF(FILE *fp) {
 
     int type = getc(fp);
     if (!strchr(validOMF, type) || (recLen = getword(fp)) < 1 ||
-        fread(record, 1, recLen, fp) != recLen)
+        (int)fread(record, 1, recLen, fp) != recLen)
         return BAD;
     uint8_t crc = type + recLen / 256 + recLen;
     for (int i = 0; i < recLen; i++)
@@ -127,8 +128,8 @@ int readHex(FILE *fp) {
 int readBin(FILE *fp) {
     recLen  = getword(fp);
     recAddr = getword(fp);
-    if (fread(record, 1, recLen, fp) != recLen)
-        error("Failed to read bin record");
+    if ((int)fread(record, 1, recLen, fp) != recLen)
+        fatal("Failed to read bin record");
     return VALID;
 }
 
@@ -184,7 +185,7 @@ int fileType(FILE *fp, image_t *image) {
             image->mVer = *p; // ver
             return AOMF85;
         } else
-            error("Unknown AOMF format");
+            fatal("Unknown AOMF format");
     }
     rewind(fp);
     if (readHex(fp) >= 0) /* got a valid hex record */
@@ -227,10 +228,10 @@ void loadOMF(FILE *fp, image_t *image) {
     int type;
     while ((type = readOMF(fp)) != MODEND) {
         if (type < MODHDR)
-            error("Invalid AOMF record %02XH", type);
+            fatal("Invalid AOMF record %02XH", type);
         else if (type == MODCONTENT) {
             if (record[0] != 0)
-                error("AOMF CONTENT record has relocatable data");
+                fatal("AOMF CONTENT record has relocatable data");
             addContent(image, record[1] + record[2] * 256, 3);
         }
     }
@@ -242,14 +243,15 @@ void loadOMF(FILE *fp, image_t *image) {
     case AOMF85:
         image->mMain = record[0];
         if (record[1] != 0)
-            error("AOMF85 MODEND record has relocatable start");
+            fatal("AOMF85 MODEND record has relocatable start");
         image->mStart = record[2] + record[3] * 256;
+        break;
     case AOMF96:
         image->mMain = record[0];
         break;
     }
     if (image->source != AOMF51 && readOMF(fp) != MODEOF)
-        warning("Missing AOMF MODEOF record");
+        warn("Missing AOMF MODEOF record");
 }
 
 /* load an Intel Hex file into memory*/
@@ -270,7 +272,7 @@ void loadHex(FILE *fp, image_t *image) {
         }
     }
     if (implicitStart == -1)
-        error("Intel Hex file missing end record");
+        fatal("Intel Hex file missing end record");
     image->mStart = implicitStart > 0 ? implicitStart : -1;
 }
 
@@ -301,13 +303,13 @@ void loadPadding(FILE *fp, image_t *image) {
     }
     image->padLen = addr - image->high;
     if (c != EOF)
-        warning("excess file padding ignored");
+        warn("excess file padding ignored");
 }
 
 bool loadFile(char *file, image_t *image) {
     FILE *fp;
     if ((fp = fopen(file, "rb")) == NULL)
-        error("Cannot open input file %s", file);
+        fatal("Cannot open input file %s", file);
 
     switch (image->source = fileType(fp, image)) {
     case AOMF51:

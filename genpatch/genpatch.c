@@ -19,7 +19,7 @@
  *                                                                          *
  ****************************************************************************/
 
-#include "showVersion.h"
+#include "utility.h"
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -42,61 +42,20 @@ char *tokens[] = { "AOMF51", "AOMF51K", "AOMF85", "AOMF96", "ISISBIN", "HEX",
                    "IMAGE",  "TARGET",  "SOURCE", "NAME",   "DATE",    "START",
                    "LOAD",   "TRN",     "VER",    "MAIN",   "MASK" };
 
-_Noreturn void usage(char *fmt, ...) {
+char const help[] =
+    "Usage: %s [-l addr]  [-s | infile] targetfile [patchfile]\n"
+    "Where\n"
+    " -l addr  set explicit load address for binary image files. Default 100H (CP/M)\n"
+    " -s       generate simple patch file from targetfile only\n"
+    "Supported file formats are AOMF51, AOMF85, AOMF96 Intel Hex, Intel ISIS I binary and "
+    "binary image\n"
+    "If infile is empty or a null device, targetfile is converted to a patch file\n"
+    "If patchfile is omitted then the patch data is output to stdout";
 
-    if (fmt) {
-        va_list args;
-        va_start(args, fmt);
-        vfprintf(stderr, fmt, args);
-        va_end(args);
-    }
-    fprintf(stderr,
-            "\nusage: %s (-v | -V | -h)  | [-l addr]  [-s | infile] targetfile [patchfile]\n"
-            "Where -v/-V provide version information\n"
-            "      -h       shows this help\n"
-            "      -l addr  set explicit load address for binary image files. Default 100H (CP/M)\n"
-            "      -s       generate simple patch file from targetfile only\n"
-            "Supported file formats are AOMF51, AOMF85, AOMF96 Intel Hex, Intel ISIS I binary and "
-            "binary image\n"
-            "If infile is empty or a null device, targetfile is converted to a patch file\n"
-            "If patchfile is omitted then the patch data is output to stdout\n",
-            invokedBy);
-    exit(fmt != NULL);
-}
 
-_Noreturn void error(char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
-    va_end(args);
-    exit(1);
-}
-
-void warning(char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    fprintf(stderr, "Warning: ");
-    vfprintf(stderr, fmt, args);
-    putc('\n', stderr);
-    va_end(args);
-}
-
-char *getInvokeName(char *path) {
-    char *s;
-#ifdef _WIN32
-    if (path[0] && path[1] == ':') // skip leading device
-        path += 2;
-#endif
-    while ((s = strpbrk(path, DIRSEP))) // skip all directory components
-        path = s + 1;
-    s = strrchr(path, '.');
-    if (s && stricmp(s, ".exe") == 0)
-        *s = '\0';
-    return path;
-}
 
 void resetMeta(image_t *image) {
-    for (int i = 0; i < sizeof(image->meta) / sizeof(image->meta[0]); i++)
+    for (int i = 0; i < (int)sizeof(image->meta) / (int)sizeof(image->meta[0]); i++)
         image->meta[i] = -1;
 }
 
@@ -209,7 +168,7 @@ void markup(image_t *src, image_t *dst) {
         src->high = dst->high;
     }
     if (src->low >= dst->high || src->high < dst->low)
-        error("Input and target files don't have any memory in common");
+        fatal("Input and target files don't have any memory in common");
 
     int addr = dst->low;
     for (int saddr = src->low; saddr < addr; saddr++) // remove src data below target
@@ -292,23 +251,17 @@ void genPatchFile(char *file, image_t *src, image_t *dst) {
 
 int main(int argc, char **argv) {
 
-    invokedBy = getInvokeName(argv[0]);
     bool needIn = true;
-
-    CHK_SHOW_VERSION(argc, argv);
-
-    if (argc == 2 && strcmp(argv[1], "-h"))
-        usage(NULL);
 
     resetMeta(&inFile);
     resetMeta(&targetFile);
     inFile.source = targetFile.source = IMAGE;
     inFile.mLoad                      = 0x100;
 
-    while (argc > 2 && argv[1][0] == '-') {
-        if (strcmp(argv[1], "-l") == 0) {
-            argc--, argv++;
-            char *s = argv[1];
+    while (getOpt(argc, argv, "l:s") != EOF) {
+        switch (optOpt) {
+        case 'l':
+            char const *s = optArg;
             if (isxdigit(*s)) {
                 inFile.mLoad = 0;
                 while (isxdigit(*s)) {
@@ -318,25 +271,29 @@ int main(int argc, char **argv) {
                 }
             } else
                 usage("-l option missing address");
-        } else if (strcmp(argv[1], "-s") == 0) {
+            break;
+        case 's':
             needIn = false;
-        } else
-            fprintf(stderr, "Skipping unknown option %s\n", argv[1]);
-        argc--, argv++;
+            break;
+        default:
+            if (optOpt & MISSINGARG)
+                usage("Missing argument for option -%c", optOpt & 0xff);
+            usage("Unknown option -%c", optOpt & 0xff);
+        }
     }
     targetFile.mLoad = inFile.mLoad;
 
     if (needIn) {
-        if (argc == 1)
+        if (optInd == argc)
             usage("Missing input file");
-        if (!loadFile(argv[1], &inFile))
-            error("input file %s failed to load any data", argv[1]);
-        argc--, argv++;
+        if (!loadFile(argv[optInd], &inFile))
+            fatal("input file %s failed to load any data", argv[optInd]);
+        optInd++;
     } else
         inFile.low  = inFile.high = 0; // mark as empty file
-    if (argc < 2 || argc > 3)
+    if (argc - optInd < 1 || argc - optInd > 2)
         usage("Incorrect number of files");
-    if (!loadFile(argv[1], &targetFile) || targetFile.low == targetFile.high)
-        error("target file %s failed to load any data", argv[1]);
-    genPatchFile(argc == 3 ? argv[2] : NULL, &inFile, &targetFile);
+    if (!loadFile(argv[optInd], &targetFile) || targetFile.low == targetFile.high)
+        fatal("Target file %s failed to load any data", argv[optInd]);
+    genPatchFile(++optInd != argc ? argv[optInd] : NULL, &inFile, &targetFile);
 }

@@ -33,6 +33,3 @@
 #ifndef _MSC_VER
 #define stricmp strcasecmp
 #endif
-
-_Noreturn void error(char *fmt, ...);
-void warning(char *fmt, ...);
