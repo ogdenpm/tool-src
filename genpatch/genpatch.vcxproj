@@ -225,6 +225,7 @@
   <ItemGroup>
     <ClInclude Include="genpatch.h" />
     <ClInclude Include="image.h" />
+    <ClInclude Include="_appinfo.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
