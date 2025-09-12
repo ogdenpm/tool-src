@@ -2,20 +2,23 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
+#include <memory.h>
 
 #include "utility.h"
 
-const char help[] = "Usage: %s [-z] [-u nnnn] basehexfile relochexfile outputfile\n"
+const char help[] = "Usage: %s [-a] [-z] [-u nnnn] basehexfile relochexfile outputfile\n"
                     "Where:\n"
-                    "-z    skip zero page data in reloc file\n"
-                    "-u nnnn  add nnnn (hex) bytes to BSS\n";
+                    "-a       suppress warning on reloc for absoute file\n"
+                    "-u nnnn  add nnnn (hex) bytes to BSS\n"
+                    "-z       skip zero page data in reloc file\n";
 
 /* extra output file type */
 enum { BAD = -2, BADCRC, VALID };
 
 #define MAXMEM 0x10000
 
-uint8_t record[MAXMEM];
+uint8_t record[32];
 int recLen;
 int recAddr;
 
@@ -55,8 +58,7 @@ int getHex4(FILE *fp) {
   updates memory bounds and usage.
 */
 
-void addContent(image_t *image, int addr, uint8_t offset) {
-    uint16_t len = recLen - offset;
+void addContent(image_t *image, int addr, uint16_t len) {
 
     if (addr + len > MAXMEM) {
         fprintf(stderr, "Warning: data beyond 0FFFFH ignored\n");
@@ -71,7 +73,7 @@ void addContent(image_t *image, int addr, uint8_t offset) {
         if (addr + len > image->high)
             image->high = addr + len;
     }
-    memcpy(&image->mem[addr], &record[offset], len);
+    memcpy(&image->mem[addr], record, len);
 }
 
 /*
@@ -104,8 +106,8 @@ void loadHex(char *name, image_t *image) {
         fatal("Cannot open input file %s", name);
     int type;
     while ((type = readHex(fp)) >= 0) {
-        if (type == 0) /* data record */
-            addContent(image, recAddr, 0);
+        if (type == 0 && recLen) /* data record */
+            addContent(image, recAddr, recLen);
     }
     fclose(fp);
     if (image->high == 0)
@@ -128,38 +130,40 @@ void writeSPR(char *name, image_t *base, image_t *reloc, bool skipZero, uint16_t
         fatal("Error writing image to %s", name);
 
     uint8_t relocBits = 0;
-    uint8_t *baseByte = base->mem[base->low];
-    uint8_t *relocByte = reloc->mem[reloc->low];
+    uint8_t *baseByte = &base->mem[base->low];
+    uint8_t *relocByte = &reloc->mem[reloc->low];
 
     for (int i = 0; i < imageSize; i++, baseByte++, relocByte++) {
         if (i % 8 == 0 && i) {
             if (fputc(relocBits, fp) == EOF)
                 fatal("Error writing relocation information to %s", name);
-            relocByte = 0;
+            relocBits = 0;
         }
         if (*relocByte || !skipZero) {
             int16_t delta = *baseByte - *relocByte;
             if (delta) {
                 if (delta != 1 && delta != -1)
                     warn("Relocation difference %d at address %04XH not +/- 1", delta,
-                          base->low + i);
-                relocBits |= 1 << (i % 8);
+                         base->low + i);
+                relocBits |= 0x80 >> (i % 8);
             }
         }
-        if (imageSize % 8)
-            if (fputc(relocBits, fp) == EOF)
-                fatal("Error writing relocation information to %s", name);
-
     }
+    if (imageSize && fputc(relocBits, fp) == EOF)
+        fatal("Error writing relocation information to %s", name);
     fclose(fp);
 }
 
 int main(int argc, char **argv) {
     bool skipZero    = false;
+    bool absfile     = false;
     uint16_t bssSize = 0;
 
     while (getOpt(argc, argv, "zu:") != EOF) {
         switch (optOpt) {
+        case 'a':
+            absfile = true;
+            break;
         case 'z':
             skipZero = true;
             break;
@@ -173,7 +177,7 @@ int main(int argc, char **argv) {
                 usage("Unknown option -%c", optOpt);
         }
     }
-    if (optInd + 2 != argc)
+    if (optInd + 3 != argc)
         usage("Incorrect number of files");
     loadHex(argv[optInd], &baseImage);      // base hex file
     loadHex(argv[optInd + 1], &relocImage); // reloc hex file
@@ -182,7 +186,8 @@ int main(int argc, char **argv) {
     if (((baseImage.low ^ relocImage.low) & 0xff) != 0)
         fatal("Base and reloc files are not at same page offset");
     if (relocImage.low != baseImage.low + 0x100 && relocImage.low != baseImage.low - 0x100)
-        warn("Reloc file is not at +/- 100h of base file");
+        if (!absfile || relocImage.low != baseImage.low)
+            warn("Reloc file is not at +/- 100h of base file");
     if (baseImage.low & 0xff) {
         warn("Base file is not on page boundary - forced");
         baseImage.low &= ~0xff;
