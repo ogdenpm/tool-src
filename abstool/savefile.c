@@ -102,7 +102,7 @@ bool fputblock(FILE *fp, image_t *image, int low, int high) {
         while (len) {
             int chunk = len < HEXBYTES ? len : HEXBYTES;
             fprintf(fp, ":%02X%04X00", chunk, low);
-            crc = 0 - chunk - crcSum(&image->mem[low], chunk);
+            crc = 0 - chunk - low - low / 256 - crcSum(&image->mem[low], chunk);
             while (chunk-- > 0) {
                 fprintf(fp, "%02X", image->mem[low++]);
                 len--;
