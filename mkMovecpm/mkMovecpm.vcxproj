@@ -24,6 +24,7 @@
     <ProjectGuid>{99427b6e-9382-440b-a38b-c4e838c6fe01}</ProjectGuid>
     <RootNamespace>mkMovecpm</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>mkMovcpm</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
