@@ -178,6 +178,22 @@ Note the -t, -v and patch file s option are for cosmetic changes, images will be
 
 Note **fixobj** is not able to resolve all differences between old files and those created by more recent tools, it does however allow creation of equivalent files. The key outstanding issue relates to problems when fixing the embedded library code that PLM v1.0 generates. In linking in the library functions, the linker does not emit the records in the same sequence, nor does it create the same record splits. Whilst this has no impact on subsequent use, it does mean that the files generated will not be a byte for byte match. The only resolution of this would be to write a bespoke linker.
 
+### genmod
+
+Port of the Digital Research genmod tool. Uses separate base and relocatable hex files, rather than original which used concatenated hex files separated with a ^Z.
+
+```
+Usage: genmod [-a] [-z] [-u nnnn] basehexfile relochexfile outputfile
+Where:
+-a       suppress warning on reloc for absoute file
+-u nnnn  add nnnn (hex) bytes to BSS
+-z       skip zero page data in reloc file
+```
+
+Note the -a option allows the creation of .spr like files for absolute files with relocatable entries. This is used for making movcpm.com.
+
+If basehexfile is located below relochexfile then a .spr file, otherwise it creates a .prl file.
+
 ### genpatch
 
 It compares two absolute files and generates patch information that **abstool** can use to generate files.
@@ -253,6 +269,19 @@ a file name of * matches all files so +* renables processing for all files
 ### isisu.exe [replaced by abstool]
 
 ### obj2bin [replaced by abstool]
+
+### mkMovcpm
+
+Creates the Digital Research movcpm.com file, using the cpmove file and relocatable versions of the boot file and cpm ccp/bdos/bios combined file.
+
+```
+Usage: mkMovcpm cpmovefile bootfile cpmfile [outputfile]
+Where cpmovefile and output file are binary files
+bootfile is a .spr file but absolute load and cpmfile is a .spr file
+If outputfile is not specified movecpm.com is generated
+```
+
+
 
 ### omfcmp
 
@@ -338,6 +367,6 @@ With the -b option by default the binary files are concatenated without a gap, t
 ------
 
 ```
-Updated by Mark Ogden 10-Sep-2025
+Updated by Mark Ogden 12-Sep-2025
 ```
 
