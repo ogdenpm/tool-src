@@ -80,8 +80,8 @@ int getOpt(int argc, char **argv, char const *opts) {
         }
     }
     optOpt = *place++;
-    char *cp = strchr(specialOpt, optOpt) ? strchr(opts, optOpt) : NULL;
-    if (cp && strchr(specialOpt, *++cp)) {
+    char *cp = strchr(specialOpt, optOpt) ? NULL : strchr(opts, optOpt);
+    if (cp && *++cp && strchr(specialOpt, *cp)) {
         if (*place || *cp == '*')   // arg or attached arg only
             optArg = place;
         else {
