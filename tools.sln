@@ -60,6 +60,14 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mkMovcpm", "mkMovecpm\mkMov
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "genmod", "genmod\genmod.vcxproj", "{B724B682-E77B-47AF-A6D0-FD03558245C8}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A3E26636-F193-4DCC-B940-7BDEF166B65A} = {A3E26636-F193-4DCC-B940-7BDEF166B65A}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lcnames", "lcnames\lcnames.vcxproj", "{9976D1B9-2017-4F3E-B0E4-FD31AF17D729}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A3E26636-F193-4DCC-B940-7BDEF166B65A} = {A3E26636-F193-4DCC-B940-7BDEF166B65A}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -215,6 +223,18 @@ Global
 		{B724B682-E77B-47AF-A6D0-FD03558245C8}.Release|Win32.Build.0 = Release|Win32
 		{B724B682-E77B-47AF-A6D0-FD03558245C8}.Release|x64.ActiveCfg = Release|x64
 		{B724B682-E77B-47AF-A6D0-FD03558245C8}.Release|x64.Build.0 = Release|x64
+		{9976D1B9-2017-4F3E-B0E4-FD31AF17D729}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{9976D1B9-2017-4F3E-B0E4-FD31AF17D729}.Debug|Any CPU.Build.0 = Debug|x64
+		{9976D1B9-2017-4F3E-B0E4-FD31AF17D729}.Debug|Win32.ActiveCfg = Debug|Win32
+		{9976D1B9-2017-4F3E-B0E4-FD31AF17D729}.Debug|Win32.Build.0 = Debug|Win32
+		{9976D1B9-2017-4F3E-B0E4-FD31AF17D729}.Debug|x64.ActiveCfg = Debug|x64
+		{9976D1B9-2017-4F3E-B0E4-FD31AF17D729}.Debug|x64.Build.0 = Debug|x64
+		{9976D1B9-2017-4F3E-B0E4-FD31AF17D729}.Release|Any CPU.ActiveCfg = Release|x64
+		{9976D1B9-2017-4F3E-B0E4-FD31AF17D729}.Release|Any CPU.Build.0 = Release|x64
+		{9976D1B9-2017-4F3E-B0E4-FD31AF17D729}.Release|Win32.ActiveCfg = Release|Win32
+		{9976D1B9-2017-4F3E-B0E4-FD31AF17D729}.Release|Win32.Build.0 = Release|Win32
+		{9976D1B9-2017-4F3E-B0E4-FD31AF17D729}.Release|x64.ActiveCfg = Release|x64
+		{9976D1B9-2017-4F3E-B0E4-FD31AF17D729}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -231,6 +251,7 @@ Global
 		shared\nversion.vcxitems*{7728cd9d-0c26-462c-979a-f9064253be51}*SharedItemsImports = 4
 		shared\nversion.vcxitems*{8919b14e-4b86-4edc-8a9f-0b27d8615000}*SharedItemsImports = 4
 		shared\nversion.vcxitems*{99427b6e-9382-440b-a38b-c4e838c6fe01}*SharedItemsImports = 4
+		shared\nversion.vcxitems*{9976d1b9-2017-4f3e-b0e4-fd31af17d729}*SharedItemsImports = 4
 		shared\nversion.vcxitems*{b220e704-6cf2-4339-801a-00cf0b6dd170}*SharedItemsImports = 4
 		shared\nversion.vcxitems*{b724b682-e77b-47af-a6d0-fd03558245c8}*SharedItemsImports = 4
 		shared\nversion.vcxitems*{baaa7c4a-92b2-4fb6-b65d-2eceec5e6334}*SharedItemsImports = 4
