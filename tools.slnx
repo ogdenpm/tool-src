@@ -1,0 +1,58 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="Win32" />
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="abstool/abstool.vcxproj">
+    <BuildDependency Project="utility/utility.vcxproj" />
+  </Project>
+  <Project Path="aomf2bin/aomf2bin.vcxproj">
+    <BuildDependency Project="utility/utility.vcxproj" />
+    <Platform Solution="*|Any CPU" Project="Win32" />
+    <Build Solution="*|Any CPU" Project="false" />
+  </Project>
+  <Project Path="disIntelLib/disIntelLib.csproj" />
+  <Project Path="dumpomf/dumpomf.vcxproj">
+    <BuildDependency Project="utility/utility.vcxproj" />
+  </Project>
+  <Project Path="fixobj/fixobj.vcxproj">
+    <BuildDependency Project="utility/utility.vcxproj" />
+    <Platform Solution="*|Any CPU" Project="Win32" />
+    <Build Solution="*|Any CPU" Project="false" />
+  </Project>
+  <Project Path="genmod/genmod.vcxproj">
+    <BuildDependency Project="utility/utility.vcxproj" />
+  </Project>
+  <Project Path="genpatch/genpatch.vcxproj">
+    <BuildDependency Project="utility/utility.vcxproj" />
+    <Platform Solution="*|Any CPU" Project="Win32" />
+    <Build Solution="*|Any CPU" Project="false" />
+  </Project>
+  <Project Path="lcnames/lcnames.vcxproj">
+    <BuildDependency Project="utility/utility.vcxproj" />
+  </Project>
+  <Project Path="mkMovecpm/mkMovecpm.vcxproj">
+    <BuildDependency Project="utility/utility.vcxproj" />
+  </Project>
+  <Project Path="omfcmp/omfcmp.vcxproj">
+    <BuildDependency Project="utility/utility.vcxproj" />
+    <Platform Solution="*|Any CPU" Project="Win32" />
+    <Build Solution="*|Any CPU" Project="false" />
+  </Project>
+  <Project Path="plmpp/plmpp.vcxproj">
+    <BuildDependency Project="utility/utility.vcxproj" />
+    <Platform Solution="*|Any CPU" Project="Win32" />
+    <Build Solution="*|Any CPU" Project="false" />
+  </Project>
+  <Project Path="shared/nversion.vcxitems" />
+  <Project Path="unpack/unpack.vcxproj">
+    <BuildDependency Project="utility/utility.vcxproj" />
+    <Platform Solution="*|Any CPU" Project="Win32" />
+    <Build Solution="*|Any CPU" Project="false" />
+  </Project>
+  <Project Path="utility/utility.vcxproj" />
+  <Project Path="wcat/wcat.vcxproj">
+    <BuildDependency Project="utility/utility.vcxproj" />
+  </Project>
+</Solution>
