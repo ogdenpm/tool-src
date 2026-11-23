@@ -26,8 +26,10 @@ char const help[] = "Usage:  %s [options] [directory | file]*\n"
                     "  -w      write new version file if version has updated\n"
                     "  -f      force write new version file\n"
                     "  -c file set alternative configuration file instead of version.in\n"
-                    "  -d      show debugging information\n"
-                    "If no directory or file is specified '.' is assumed\n";
+                    "  -u      include untracked/ignored files and directories\n"
+                    "  -p      ignore changes to Visual Studio project files\n"
+                    "If no directory or file is specified '.' is assumed\n"
+                    "Note -w or -f are only relevant for directories\n";
 
 #ifndef _MAX_PATH
 #ifdef PATH_MAX
@@ -37,42 +39,44 @@ char const help[] = "Usage:  %s [options] [directory | file]*\n"
 #endif
 #endif
 
-char *dirName;
-char *fileName;
 char *currentWorkingDir;
 
-char decorate[128]  = "--decorate-refs=tags/appName-r*"; // updated once appName known
-char tagPrefix[128] = "tag: appName-r";                  // updated once appName known
+char decorate[_MAX_PATH]  = "--decorate-refs=tags/appName-r*"; // updated once appName known
+char tagPrefix[_MAX_PATH] = "tag: appName-r";                  // updated once appName known
+char context[_MAX_PATH];
+char fileName[_MAX_PATH];
 
-char const *logCmd[]      = { "git", "log", "-1", decorate, "--format=g%h,%ct,%D", "--", NULL, NULL };
-char const *diffIndexNameCmd[] = { "git", "diff-index", "--name-only", "--ignore-cr-at-eol","HEAD", "--", ".", NULL };
-char const *diffIndexCmd[]     = { "git", "diff-index", "--quiet", "--ignore-cr-at-eol", "HEAD", "--", NULL,  NULL };
-char const *ignoreCmd[]        = { "git", "check-ignore", NULL, NULL };
+char const *logCmd[]           = { "git", "log", "-1",     decorate, "--format=g%h,%ct,%D",
+                                   "-z",  "--",  fileName, NULL };
+char const *diffIndexNameCmd[] = { "git", "diff-index", "--name-only", "--ignore-cr-at-eol",
+                                   "-z",  "HEAD",       "--",          fileName,
+                                   NULL };
+char const *diffIndexCmd[] = { "git", "diff-index", "--quiet", "--ignore-cr-at-eol", "-z", "HEAD",
+                               "--",  fileName,     NULL };
+char const *statusCmd[]    = { "git", "status", "-z", "--ignored", "-u", fileName, NULL };
 
-int logPathIndex;
-int diffIndexPathIndex;
-int ignorePathIndex;
+char const *projectExtensions[] = { ".vcxproj", ".csproj", ".vbproj", ".sln", ".vcxproj.filters" };
 
 string_t exeBuf;
+string_t statusBuf;
 
-bool quiet;
 bool includeUntracked;
 
-int vCol = 14;
+unsigned vCol = 14;
 char const *appName;
-char version[256];
+char version[_MAX_PATH];
 int versionLoc = 0;
 char date[20];
-char oldVersion[256];
+char oldVersion[_MAX_PATH];
 char const *configFile = "version.in";
 char *versionFile;
 
-bool noGit; // set to true if git isn't accessible
-
+bool noGit = false;                    // true if not a git repository
 enum { DIRECTORY, SINGLEFILE, OTHER }; // path types
 
 bool writeFile = false;
 bool force     = false;
+bool ignoreProjectFiles = false;
 
 static bool isPrefix(char const *str, char const *prefix) {
     while (*prefix && *str++ == *prefix++)
@@ -94,8 +98,8 @@ static char *scanNumber(char *s, int low, int high) {
 static char *scanRevision(char *s) {
     char *t = s;
     if (*t == 'g') {
-        while (isxdigit(*t))
-            t++;
+        while (isxdigit(*++t))
+            ;
         return t != s + 1 ? t : NULL;
     }
     if (isdigit(*t) && *t != '0') { // valid for both old and new
@@ -120,11 +124,11 @@ static char *scanRevision(char *s) {
 
 static bool parseVersion(char *line) {
 
-    for (char *start = strchr(line, '2'); start; start = strchr(start + 1, '2')) {
+    for (char *start = strstr(line, "20"); start; start = strstr(start + 2, "20")) {
         // scan forward looking for 20\d\d\.1?\d\.[123]?\d\.revision
         char *end;
         if ((end = scanNumber(start, 2000, 2099)) && (end = scanNumber(end, 1, 12)) &&
-            (end = scanNumber(end, 1, 31)) && (end = scanRevision(end))) {
+            (end = scanNumber(end, 1, 31)) && (end = scanRevision(end)) && end) {
             if (*end == '+')
                 end++;
             if (*end == '?')
@@ -135,77 +139,59 @@ static bool parseVersion(char *line) {
             return true;
         }
     }
-
-    for (char *start = strchr(line, 'x'); start; start = strchr(start + 1, 'x'))
-        if (isPrefix(start, "xxxx.xx.xx.x?")) {
-            strcpy(oldVersion, "xxxx.xx.xx.x?");
-            return true;
-        }
-    oldVersion[0] = '\0';
+    if (strstr(line, "xxxx.xx.xx.x?")) {
+        strcpy(oldVersion, "xxxx.xx.xx.x?");
+        return true;
+    }
     return false;
 }
 
 static void getOldVersion() {
     *oldVersion = '\0';
-    FILE *fp = fopen(versionFile, "rt");
+    FILE *fp    = fopen(versionFile, "rt");
     if (fp) {
         char line[256];
         while (fgets(line, sizeof(line), fp)) {
-            for (char *s = line; *s; s++) {
-                char *t = "git_version";
-                while (*t && tolower(*s++) == *t++)
-                    ;
-                if (!*t && parseVersion(line))
-                    break;
-            }
+            for (char *s = line; *s; s++)
+                *s = tolower(*s);
+            if (strstr(line, "git_version") && parseVersion(line))
+                break;
         }
         fclose(fp);
-    }
-    if (*oldVersion == '\0') {
-        force = true;
-        strcpy(oldVersion, "xxxx.xx.xx.x?");
     }
 }
 
 static int setupContext(char *path) {
-    if (!currentWorkingDir && !(currentWorkingDir = getcwd(NULL, _MAX_PATH)))
-        fatal("Cannot determine current directory");
-
-    if (chdir(currentWorkingDir))
-        fatal("Cannot chdir to current working directory");
-
-    free(dirName);
-    free(fileName);
-
     struct stat sb;
-
 #ifdef _MSC_VER
-    dirName = _fullpath(NULL, path, _MAX_PATH);
-#elif defined(linux)
-    dirName = realpath(path, NULL);
+    if (_fullpath(context, path, _MAX_PATH) == NULL)
+#else
+    if (realpath(path, context) == NULL)
 #endif
-    if (dirName == NULL)
-        warn("Can't resolve directory/file %s\n", path);
-    else if (stat(path, &sb) != 0)
+        warn("Cannot resolve full path for %s", path);
+    else if (stat(context, &sb) != 0)
         warn("Cannot access %s", path);
-    else if (sb.st_mode & S_IFDIR) {
-        if (chdir(path) == 0) {
-            fileName = NULL;
-            return DIRECTORY;
+    else {
+        char *name = (char *)basename(context);
+        if (!*name) {
+            name[-1] = '\0';                      // remove the trailing directory separator
+            name     = (char *)basename(context); // retry to get the directory name
         }
-        warn("Cannot change to directory %s", path);
-    } else if (sb.st_mode & S_IFREG) {
-        char *fname = (char *)basename(dirName);
-        fileName    = safeStrdup(fname);
-        *--fname    = '\0'; // remove filename
-        if (chdir(dirName) == 0)
+
+        if (sb.st_mode & S_IFDIR) {
+            strcpy(fileName, ".");
+            appName = *name ? name : "_root_";
+            return DIRECTORY;
+        } else if (sb.st_mode & S_IFREG) {
+            strcpy(fileName, name);
+            *name   = '\0';
+            appName = fileName;
             return SINGLEFILE;
-        warn("Cannot change to directory containing %s", path);
-    } else
-        warn("%s is not a directory or file", path);
+        } else
+            warn("%s is not a directory or file", path);
+    }
     return OTHER;
 }
-
 
 // note the % 10000 and % 100 are to stop GCC complaining about possible overrun
 static void initAsciiDate() {
@@ -226,56 +212,77 @@ static char *ctimeVersion(char *timeStr) {
     return verStr;
 }
 
-#if DEBUG
-static void show(char **s) {
-    while (*s)
-        printf("'%s' ", *s++);
-    putchar('\n');
+
+static bool isProjectFile(char const *ext) {
+    for (unsigned i = 0; i < sizeof(projectExtensions) / sizeof(projectExtensions[0]); i++) {
+        if (stricmp(ext, projectExtensions[i]) == 0) {
+            return true;
+        }
+    }
+    return false;
 }
-#endif
 
 static void generateVersion(bool isApp) {
-    int lResult = execute(logCmd, &exeBuf, false);
+    int lResult;
+    strcpy(version, "xxxx.xx.xx.x?");
+    if (noGit || (lResult = execute(logCmd, &exeBuf, false)) < 0) {
+        if (!noGit) {
+            warn("Cannot run git");
+            noGit = true;
+        }
+        return;
+    }
     if (lResult == 0 && exeBuf.str[0]) {
-        char *s = strchr(exeBuf.str, '\n'); // remove any trailing new line
-        if (s)
-            *s = '\0';
+        if (!isApp) { // for files check still live in repo
+            if (execute(statusCmd, &statusBuf, false) != 0 || statusBuf.str[0] == '!' ||
+                statusBuf.str[0] == '?')
+                return;
+        }
+
         // simple split on comma
 
-        char *pSha1 = exeBuf.str;
-        if ((s = strchr(pSha1, ',')))
-            *s = '\0';
-        char *pCtime = s ? s + 1 : "";
+        char *s;
         char rev[128];
-        if ((s = strchr(pCtime, ','))) {
-            if (isPrefix(++s, tagPrefix)) { // skip comma "tag: " appname "-r"
-                s += strlen(tagPrefix);
-                if (isdigit(*s) &&
-                    !strchr(s, '-')) { // avoid issue with apps named {name} and {name}-r
-                    char *t = pSha1 = rev;
-                    while (isdigit(*s)) // but '-' between release and qualifier if present
-                        *t++ = *s++;
-                    if (*s)
-                        *t++ = '-';
-                    strcpy(t, s);
-                }
+        if ((s = strchr(exeBuf.str, ',')))
+            *s = '\0';
+
+        char *pCtime = s ? s + 1 : "";
+        strcpy(rev, exeBuf.str); // default to githash
+        // check for tag: appname-r
+        if ((s = strchr(pCtime, ',')) && isPrefix(++s, tagPrefix)) {
+            s += strlen(tagPrefix);
+            if (isdigit(*s)) {
+                char *t = rev;
+                while (isdigit(*s))
+                    *t++ = *s++;
+
+                if (*s && *s != '-') // add qualifier if needed
+                    *t++ = '-';
+                strcpy(t, s);
             }
         }
-        sprintf(version, "%s.%s", ctimeVersion(pCtime), pSha1);
 
-        if (isApp) { // for app check don't consider the version file
-            if (execute(diffIndexNameCmd, &exeBuf, false) == 0 && exeBuf.str[0]) {
-                char *s = strchr(exeBuf.str, '\n'); // get end of first line
-                *s++    = '\0';                     // convert to string
-                // if there are no more lines and this one has a file name versionFile, then treat
-                // as unchanged
-                if (*s || stricmp(basename(exeBuf.str), versionFile) != 0)
-                    strcat(version, "+");
+        sprintf(version, "%s.%s", ctimeVersion(pCtime), rev);
+
+        if (isApp) { // for app check ignore changes to the version file
+            if (execute(diffIndexNameCmd, &exeBuf, false) == 0) {
+                for (char *filePtr = exeBuf.str; filePtr < exeBuf.str + exeBuf.pos && *filePtr; filePtr += strlen(filePtr) + 1) {
+                    if (strncmp(filePtr, "warning: in the working copy", 28) != 0) {
+                        char const *file = basename(filePtr);
+                        if (stricmp(file, versionFile) != 0) { // generated version files are ignored
+                            if (!ignoreProjectFiles || !isPrefix(file, appName) ||
+                                !isProjectFile(file + strlen(appName))) {
+                                // not project file or ignored
+                                strcat(version, "+");
+                                break;
+                            }
+                        }
+                    }
+                }
             }
         } else if (execute(diffIndexCmd, NULL, false) == 1)
             strcat(version, "+");
-    } else
-        strcpy(version, "Untracked");
+    }
 }
 
 static void getOneVersion(char *name) {
@@ -283,64 +290,42 @@ static void getOneVersion(char *name) {
     if (type == OTHER || strcmp(name, ".git") == 0)
         return;
 
-    appName = basename(dirName);
-    if (!*appName)
-        appName = "-ROOT-";
-    if (logPathIndex == 0) {
-        for (char const **p = logCmd; *p; p++)
-            logPathIndex++;
-        for (char const **p = diffIndexCmd; *p; p++)
-            diffIndexPathIndex++;
-        for (char const **p = ignoreCmd; *p; p++)
-            ignorePathIndex++;
-    }
-    ignoreCmd[ignorePathIndex] = diffIndexCmd[diffIndexPathIndex] = logCmd[logPathIndex] =
-        fileName ? fileName : ".";
-    int ignored = -1;
-    if (!noGit) {
-        ignored = execute(ignoreCmd, &exeBuf, false);
-        if (ignored < 0) {
-            warn("Git not found");
-            noGit = true;
-        }
-    }
-    if ((ignored == 0 || ignored > 1) && !includeUntracked)
+    if (chdir(context) != 0) {
+        warn("Cannot change to directory %s", context);
         return;
+    }
 
     sprintf(decorate, "--decorate-refs=tags/%s-r*", appName);
     sprintf(tagPrefix, "tag: %s-r", appName);
 
+    if (type == DIRECTORY) {
+        free(versionFile);
+        versionFile = parseConfig(configFile);
 
-    if (ignored == 0 || ignored == 128)
-        strcpy(version, "Untracked");
-    else if (type == DIRECTORY) {
-        if (noGit || ignored == 1) {
-            free(versionFile);
-            versionFile = parseConfig(configFile);
-            getOldVersion();
-            *version = '\0'; // assume no version
-            if (!noGit)
-                generateVersion(true);
-            if (!*version) {
-                strcpy(version, oldVersion);
-                if (!strchr(version, '?'))
-                    strcat(version, "?");
-            }
-            if (writeFile && (force || strcmp(version, oldVersion) != 0))
-                writeNewVersion(versionFile, version, date);
+        generateVersion(true);
+        getOldVersion();
+        if (*version == 'x' && *oldVersion) {
+            strcpy(version, oldVersion);
+            if (!strchr(version, '?'))
+                strcat(version, "?");
+
         }
-    } else if (ignored == 1)
+        if (writeFile && (force || strcmp(version, oldVersion) != 0))
+            writeNewVersion(versionFile, version, date);
+    } else
         generateVersion(false);
-    else if (noGit)
-        strcpy(version, "Unknown");
 
-    if (isdigit(*version) || includeUntracked)
-        printf("%-*s %c %s\n", vCol, type == DIRECTORY ? appName : name,
-               type == DIRECTORY ? '-' : '+', version);
+    if (chdir(currentWorkingDir)) {
+        ;
+    }
+
+    if (isdigit(*version) || (type == DIRECTORY && writeFile) || includeUntracked)
+        printf("%-*s %c %s\n", vCol, appName, type == DIRECTORY ? '-' : '+',
+               *version == 'x' ? "Unknown" : version);
 }
 
 int main(int argc, char **argv) {
-    while (getopt(argc, argv, "dfwuc:") != EOF) {
+    while (getopt(argc, argv, "fwuc:p") != EOF) {
         switch (optopt) {
         case 'f':
             force = true;
@@ -348,17 +333,18 @@ int main(int argc, char **argv) {
         case 'w':
             writeFile = true;
             break;
-        case 'd':
-            debug = true;
-            break;
         case 'c':
             configFile = optarg;
             break;
         case 'u':
             includeUntracked = true;
             break;
+        case 'p':
+            ignoreProjectFiles = true;
+            break;
         }
     }
+    currentWorkingDir = getcwd(NULL, 0);
 
     initAsciiDate();
     if (optind + 1 >= argc)
@@ -368,14 +354,9 @@ int main(int argc, char **argv) {
             if (strlen(argv[i]) > vCol)
                 vCol = (int)strlen(argv[i]);
     }
-    vCol = optind < argc - 1 ? 24 : 1;
     if (optind == argc)
         getOneVersion(".");
     else
         while (optind < argc)
             getOneVersion(argv[optind++]);
-
-    if (currentWorkingDir && chdir(currentWorkingDir))
-        ;
-
 }
