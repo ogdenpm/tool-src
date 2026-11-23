@@ -1,1 +1,1 @@
-char utilityLib[] ="utility library version: 2025.9.29.5 Released: 2025-09-29 13:56:36";
+char utilityLib[] ="utility library version: 2026.11.23.6 Released: 2026-11-23 15:09:06";
