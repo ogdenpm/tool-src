@@ -1,210 +1,232 @@
-# New version management tools
+# Version management tools
 
 ## Version labelling using git
 
 There are many approaches that have been used to identify versions, for examples read the Wikipedia page [Software versioning](https://en.wikipedia.org/wiki/Software_versioning).
 
-Whilst each has its merits, most are more complex than I require, so I have created a simple version labelling approach for my own developments, for which I have written scripts that support auto generation of the label using git information.
+Whilst each has its merits, most are more complex than I require, so I have created a simple version labelling approach for my own developments, for which I have written tools that support auto generation of the version label using git information.
 
 The new version documented below, is simpler and quicker than my previous approach.
 
+Note with the port of the versioning tools to C, there have been some changes to the version  string
+
+- The branch is now no longer included.
+- The release number is now more general revision string and supports qualifiers such as beta1, rc2 etc.
+- Individual files now follow the same versioning model and no longer use counts of commits.
+- To avoid confusion between sha1 and the new revision string all sha1 are prefixed with the letter 'g'.
+
 ### Auto generated version string
 
-For directories, usually associated with applications, the auto generated version string is of the form
+The general format of the automatically generated version string is
 
-​		`[branch-]year.month.day.(release number | sha1)[+][?]`
-
-For individual files, to avoid the need for many tags, the format is similar
-
-​		`[branch-]year.month.day.commits[+]	'[' sha1 ]'`
-
-Where
+​	`year.month.day.(release | 'g' sha1)[+][?]`
 
 | Component      | Notes                                                        |
 | -------------- | ------------------------------------------------------------ |
-| branch         | This is the branch the commit is on, excluded if the branch is main or master. For detached branches the name (detached) is used. |
-| year.month.day | The GMT date of the associated git commit, leading zeros are omitted |
-| release number | This is used when the commit has an associated tag. It is the end numeric value of the commit tag matching  {dir}-rnnn, where {dir} is the name of the directory containing the source files, |
-| sha1           | If commit does not have an associated release tag then the sha1 value of the commit is displayed |
-| commits        | This is  the number of times the individual file has been changed during git commits |
+| year.month.day | The GMT date of the associated git commit in numeric form, with leading zeros omitted |
+| release        | This is used when the application commit has an associated tag It has format<br />`revision ['-' qualfier qualifier_revision]`<br />a release has a corresponding git tag, {dir}-r{release}<br />where {dir} is the name of the containing directory and {release} is the release tag without any '-'<br />See makeRelease for more details. |
+| sha1           | This is the sha1 of the associated commit and is used if there is no associated tag |
 | '+'            | A plus sign is appended if the build includes uncommitted files, other than version file itself. |
 | '?'            | A question mark is added if the files are untracked, i.e. using files outside of git |
 
 ## Generating version from Git
 
-There are several utilities that support the new version format
+Note the previous windows batch, perl and powershell utilities have not been updated and should no longer be used.
 
-### getVersion - getVersion.cmd (windows batch) & getVersion.pl (perl)
+### getVersion
 
-This utility is the primary utility used to generate a version string for an application. It  should be run from within the directory for which the version string is required.
+This utility is the primary utility used to generate a version string for an application.
 
 ```
-usage: getVersion -v | -h | [-q] [-s] [-w|-W]
--v	  shows the version of the script
--h	  shows simple help
--q	  supresses displaying the version on the console if file written
--s	  simplified console output version, also no warning messages
--w	  writes the header file if the version changed
--W    writes the header file even if the version was unchanged
+Usage:  getversion [options] [directory | file]*
+Where options are:
+  -w      write new version file if version has updated
+  -f      force write new version file
+  -c file set alternative configuration file instead of version.in
+  -u      include untracked/ignored files and directories
+If no directory or file is specified '.' is assumed
+Note -w or -f are only relevant for directories
 
-The default generated file is _version.h as a C/C++ header file
-This can be overriden using a configuration file version.in, see below.
+Also supports single arguments -v, -V for version info and -h for help
 
-Because the -W option always writes the header file, it can be used for force a rebuild of files that dependend on it. For C and C++ by using __DATE__ and __TIME__ macros the build date/time can be captured.
-The -s option is to support build tool capture of the version string from stdout
+Because the -f option always writes the header file, it can be used for force a rebuild of files that dependend on it. For C and C++ by using __DATE__ and __TIME__ macros the build date/time can be captured.
+See also using version.in below
 ```
 
 #### How it works
 
-The tool uses 2 git commands
+The tool uses up to 3 git commands to generate the version number as follows
 
-```
-git status	used to get the branch and whether there are uncommited files
-			other than the version header file
-git log		used to get the commit date, sha1 and any associated tag
-```
+For directories
 
-1. Using the above information the commit time is converted into the year.month.day component.
-2. The branch- prefix is added if branch is not main or master.
-3. if the commit has an associated tag of the form {dir}-rnnn, where {dir} is the directory containing the source,  then the nnn is added, else the sha1 is added.
-4. Finally if there are uncommitted files the plus sign is added.
+1. git log is used to get the commit date, sha1 and any associated tag associated
+2. If Git is present and `git log` returns useful information, it is used as follows
+   - the commit time is converted into the year.month.day component
+   - if the commit has an associated tag of the form {dir}-r{release}, where {dir} is the directory containing the source and release starts with a digit,  then the {release} is added, else the sha1 is added. Note in adding {release} a dash is inserted between the leading digits and any other characters.
+   - finally `git diff-index` is run to check if commits are pending in the directory, if they are then a '+' is added to the end
+     Note the version file is excluded from this check
+3. else if useful information and a previously generated version file exists
+   - The version in the old version file is extracted and if not already present, a '?' suffix is added.
+4. else
+   - The version string is set to xxxx.xx.xx.x?
 
-If git isn't present then the version number uses the  information stored in the last generated version file, appending a question mark to the end, if it doesn't already have one. If there is no version file it uses xxxx.xx.xx.xx?.
+For files
 
-This approach allows some support for builds where a snapshot is taken from GitHub, rather than using a repository clone. To achieve this, generated version file is committed in the repository. The release tool **mkrelease** updates this file before the commit with a new release number, but unfortunately a normal commit, uses the existing release number or shar1, most likely with a plus sign suffix. It is therefore not recommended to create builds using snapshots of informally released  commits. Also be aware that all snapshot builds that use **getVersion** will have a '?' appended to the version string, to indicate that the version is not being tracked.
+1. git log is used to get the commit date, sha1 and any associated tag associated
+2. if Git is present and `git log` returns useful information and `git status` indicates the file hasn't been removed, then
+   - the commit time is converted into the year.month.day component
+   - if the commit has an associated tag of the form {dir}-r{release, where {dir} is the directory containing the source,  then the {release} is used, else the sha1 is added.
+   - finally git diff-index is run to check if commits is pending on the file, if it is then a '+' is added to the end
+3. else
+   - The version string is set to xxxx.xx.xx.x?
+
+Note: In the console listing xxxx.xx.xx.x? is shown as Untracked.
+
+This approach allows some support for builds where a snapshot is taken from GitHub, rather than using a repository clone. To achieve this, generated version file is committed in the repository. The release tool **makeRelease** updates this file before the commit with a new release number, but unfortunately a normal commit, uses the existing release number or shar1, most likely with a plus sign suffix. It is therefore not recommended to create builds using snapshots of informally released  commits. Also be aware that all snapshot builds that use **getVersion** will have a '?' appended to the version string, to indicate that the version is not being tracked.
 
 #### Using version.in
 
-If **version.in** is not present the **gitVersion** -w/-W options write a simple #define to the file _version.h of the form
+If the -w or -f options are specified for each directory, the tool looks for a configuration file; **version.in** unless overridden by the -c option. This file can contain  two items
 
 ```
-#define GIT_VERSION	"version string"
+'[' [versionFile] [ '|' crlf_override ] ']'
+one or more lines of template text
+
+The items should appear in order but are both optional. White blank lines preceeding each are skipped.
 ```
 
-However to support other languages **getVersion** if **version.in** exists it will be used to override the generated file name or content, or both. The **version.in** file is processed as follows
-
-If the first none blank line is of the format [filename], then filename will be used instead of _version.h.
-
-If there is any other content this is treated as a template and is copied into the target file, replacing @V@ with the GIT_VERSION string and @D@ with the current UTC  date and time in yyyy-mm-dd hh:mm:ss format.
-
-The @D@ option is of use when the date and time is needed and  no alternative solution exists.
+**verisonFile** defines the file to generate
+**crlf_override** controls the crlf format for the generated file if required, specifically
 
 ```
-Some examples
-To include some static information, still writing to _version.h
-#define APP_NAME    "superprog"
-#define APP_CONTRIBUTOR "A N Other"
-#define GIT_VERSION "@V@"
+lf	-> unix style new lines				e.g. perl requires this
+crlf -> windows style new lines			e.g. for use with old software development tools
+```
 
-To create an assembler version string, writing to ver.inc
+if omitted it defaults to the native text format of the os being used
+
+**template text** can be any text with the strings
+@v@ or @V@ being replaced with the version string and
+@d@ or @D@ being replaced the current date time in the format yyyy-mm-dd hh:mm:ss
+Note, to enable the tool to pick out an old version string, one of the lines containing @v@ should also contain the text string git_version (case insensitive). Unlike previous implementations the version string no longer needs to be included in quotes
+
+##### template examples
+
+```
+PL/M writing to file ver.pex
+[ver.pex]
+DECLARE version(*) byte data('@v@', 0);	/* git_version */
+		built(*) byte data('@d@', 0);
+Text file writing to file Package
+[Package]
+Git_Version 	@v@
+Last_Checked	@d@
+
+Assembler writing to file ver.inc
 [ver.inc]
-myver:	db '@V@', 0		; git_version (see note below)
+myver:	db '@V@', 0		; git_version
 build:	db '@D@', 0		; the build date
 ```
 
-Note a line containing the text GIT_VERSION (case insensitive) is assumed to contain the previous file version, which is used to generate a default version string if Git is not in use. To be detected the version string should be enclosed in single or double quotes and the first quoted string on the line.
-
-### mkRelease - mkrelease.cmd (windows batch)
-
-This utility generates the next release number, creates a version string from it, commits it to git and associates a git tag . The tag is of the format
-
-`{dir}-r{nnn}`
-
-where {dir} is the current directory name and {nnn} is the release number.
+If the template file cannot be found or either of the items are missing the defaults used are
 
 ```
-usage: mkRelease -v | -h | [-f] [-r nnn] [message]
--v		shows the version of the script
--h		shows simple help
--f		assumes 'Y' response to any confirmations
--r nnn	uses the release number nnn, rather than the next sequential number
-The optional message is included in the commit message, otherwise an editor is opened to allow entry of the commit message
-The tool supports version.in in the same way as gitVersion
-
-Note the -r option allows nnn to be any text, however no checks are made on clashes with other tags. It was introduced to allow an indication of historic releases done under other version management schemes. For numeric values, leading 0s should be omitted.
+versionFile		_version.h
+template		// Autogenerated version file
+				#define GIT_VERSION "@v@"
 ```
 
-Unlike getVersion, mkRelease will only work if git is installed and the directory being processed is in a repository and not headless.
+### makeRelease
 
-Unless -f is specified, it prompts to proceed, when not on the main/master branch or if there are uncommitted files, other than the version file.
+This utility supersedes the previous script based tools and is use to generate a new release tag and consistent version file in git.
 
-The tool uses the invoke time in GMT to ensure consistency of the date and version, including avoiding risks around midnight. It finds the next release number to use by adding one to the previous numeric release number.
+```
+Usage:  makerelease [options]
+Where options are:
+  -r rel  use the specified release for the new version file
+  -m msg  use msg as the commit msg
+  -c file set alternative configuration file instead of version.in
+  -d      show debugging information
 
-It then tries the commit, if message is specified, the commit message is
-`year.month.day.release: message`
-otherwise it invokes the editor, pre-populated with the text
-`year.month.day release:`
+Also supports single arguments -v, -V for version info and -h for help
+Note makeRelease does not support releasing files when in the headless state
+The handling of the configuration file is as per getVersion
+```
 
-If the commit is succeeds, the annotated tag is created,  with the annotation message i
-`Release year.month.day.release`
+#### release naming
+
+Unlike the previous release tools, this version supports more than numeric release names. Specifically the release supports names of the following format
+
+```
+revision_number [qualifier qualifier_revision_number]
+where qualfier can contain one or more letters and underlines and the
+two revision numbers can contain only digits and cannot start with a 0
+Note the current implementation limits the qualifier length to 15 characters and the numeric values to 65535. They can be changed if required.
+
+In the git repository the corresponding release tag is {dir}-r{release_name} where {dir} is the parent directory name. The corresponding version string has the commit date prefixed and if the qualifer is used a dash is added after the revision_number.
+Examples for files assuming the directory name is test
+Release name		git tag				version string
+7					test-r7				2024.11.13.7
+9beta1				test-r9beta1		2024.11.18.9-beta1
+```
+
+#### Setting the release name (-r rel)
+
+To make naming releases straightforward makeRelease supports simplified name specification which is described below. In the descriptions **last_revision** refers to the highest numeric value used as the revision_number in existing unqualified tags. Note # is used to separate components in the table below, it is not actually typed.
+
+| Option                                                       | new revision set to (->)                                     |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| None                                                         | ->**last_revision** + 1                                      |
+| -r **number**<br />on main or master branch                  | if **number** is 0 ->**last_revision+ 1**<br/>if **number** is > **last_revision** or **number** = **last_revision** and the commit day is the same: ->**number**<br />else error |
+| -r **number**<br />not on main or master branch              | This is processed using the next rule, after adding the qualifier text string dev |
+| -r [**number**]<br />**qualifier**<br />[**qualifier_revision**] | If **number** is not specified or is 0 it is replaced by **last_revision+1**<br /> **last_qualifier_revision**  is set to the highest **qualifier_revision** used in any previous tags with a **number**#**qualifier** prefix<br/>If **qualifier_revision** == 0 or is missing it is set to **last_qualifier_revision+1**<br />if **qualifier_revision** > **last_qualifier_revision** or **qualifier_revision** == **last_qualifier_revision** and the commit day is the same: -> **number#qualifier#qualifier_revision**<br />else error |
+|                                                              |                                                              |
+
+##### Examples
+
+```
+Assuming the following tags exist, with corresponding commit dates and assuming today is 2024.11.18
+test-r5         2024.11.13
+test-r6         2024.11.13
+test-r7         2024.11.13
+test-r7dev1     2024.11.13
+test-r7dev2     2024.11.13r
+test-r7rc1      2024.11.13
+test-r8         2024.11.18
+test-r9beta1    2024.11.18
+then then the above rules would be interpreted as follows
+option		  generated tag version string
+none or -r0	   test-r9		 2024.11.18.9		 highest revision was 8
+-r 10		   test-r10		 2024.11.18.10		 explicitly set and > 8
+-r 8		   test-r8		 2024.11.18.8		 = highest revision and same day
+-r 7		   error							 less than highest revision
+-r rc		   test-r9rc1	 2024.11.18.9-rc1	 highest revision was 8
+-r [0]beta[0]  test-r9beta2	 2024.11.18.9-beta2	 auto revisions
+-r [0]beta1	   test-r9beta1	 2024.11.18.9-beta1	 auto revision, same day so ok
+-r 7rc1		   error							 not same day
+-r 7rc3		   test-r7rc3	 2024.11.18.7-rc3	 > previous_qualifier_revision
+```
+
+#### Additional notes
+
+The tool uses the invoke time in GMT to ensure consistency of the date and version, including avoiding risks around midnight.
+
+If no files have changed, a git commit --amend is done
+otherwise It then tries the commit, if message is specified, the commit message is
+`{dir} '-'year.month.day.release: message`
+or it invokes the editor, pre-populated with the text
+`{dir} - year.month.day.release:`
+
+Where `{dir}` is the containing directory name
+
+If the commit is succeeds, the annotated tag is created,  with the annotation message
+`Release {dir} - year.month.day.release`
 
 If the commit fails, then the version file is rolled back to its previous content.
 
-### Additional support scripts
+## Additional support tools
 
-#### revisions.pl
-
-**revisions.pl** identifies the file version of a specific file and attempts to determine how many revisions there have been to the file
-
-```
-usage: usage: revisions.pl -v | -h | [-a|-i|-u|-n]* [--] [file | dir]*
-where -v shows version info
-      -h show usage and exit
-      -a assume directories contain apps
-      -n no expansion of directory
-      -i include ignored files
-      -u include untracked files
-      -- forces end of option processing, to allow file with - prefix
-if no file or dir specified then the default is .
-for directories unless -n is specified, the versions of the directory content is shown
-file or dir can contain wildcard characters but in this case directories starting with '.' are excluded
-```
-
-When the -a option is specified, directory versions are shown as per getVersion, otherwise the version string for individual files is used.
-
-```
-Examples
->revisons.pl
-*Directory* .                  2023.4.23.73+  [ec77992]
-...
-- README.md                    2020.10.12.13  [f7a16a5]
-- VERSION.html                 2021.8.25.4    [b639f33]
-- VERSION.md                   2021.8.25.9    [b639f33]
-...
-
->revisions.pl -a
-*Directory* .                  2023.4.23.ec77992+
-...
-- README.md                    2020.10.12.13  [f7a16a5]
-- VERSION.md                   2021.8.25.9    [b639f33]
-- VERSION.pdf                  2021.8.25.4    [b639f33]
-...
-
->revisons.pl VERSION.*
-VERSION.html                   2021.8.25.4    [b639f33]
-VERSION.md                     2021.8.25.9    [b639f33]
-VERSION.pdf                    2021.8.25.4    [b639f33]
-version.cmd                    2023.4.19.18   [6256cd3]
-version.cs                     2021.8.26.2    [f3fbc10]
-version.pl                     2023.4.19.12   [a8c8343]
-```
-#### fileVer.cmd & rev.cmd
-
-These are simplified versions of **revisions.pl,** with less options but they do not require perl to be installed. In general using **revisions.pl** is the preferred option.
-
-```
-usage: fileVer [-v] | file
-where
--v		shows version info for the script
-file	this lists the file string version for the named file.
-
-usage: rev [-v] | [-s] 
-where -v shows version info
-      -s also shows files in immediate sub-directories
-This lists the versions of files in the current directory, optionally showing those in immediate subdirectories
-```
-
-#### installScript.pl
+### installScript.pl
 
 This script is primarily to deploy script files to target directories, e.g. for inclusion in github repsoitories. When doing so it replaces the string \_REVISION\_ in the script with text showing the actual version of the script. It uses the individual file version information.
 
@@ -229,7 +251,7 @@ Blank lines and lines beginning # are ignored
 Note files with relative and full paths are supported, however files copied to the target directory will only use the filename part.
 ```
 
-#### install.cmd
+### install
 
 This command is typically run post build to copy a built file to one or more locations.
 
@@ -241,7 +263,7 @@ configFile defaults to installRoot\install.cfg
  **install.cfg** contains lines of the form
 
 ```
-srcDir,dir[,suffix]
+srcDir dir [suffix]
 Where
 srcDir 	is the name compared with the immediate parent directory name of file_with_path.
 		If this matches the line is processed
@@ -249,6 +271,9 @@ dir 	is the name of directory to install to, with a leading + replaced by instal
 suffix 	is inserted into the installed filename just before the .exe extension with
 		$d replaced by the local date in yyyymmdd format and
 		$t replaced by the local time in hhmmss format
+Notes
+srcDir, dir and suffix can each be surrounded by double quotes to allow embedded spaces and commas.
+Each field is separated by whitespace and/or a comma.
 ```
 
 **Example** with **install.cfg** in the current directory containing the lines
@@ -266,11 +291,11 @@ install somepath\x86-Release\myfile.exe .
 
 copies somepath\x86-Release\myfile.exe to .\prebuilt\myfile.exe and d:\bin\myfile_32.exe
 
-**install.cmd** supports control lines in the install.cfg file. These determine which files the descriptor lines below it apply to. Subsequent control lines set new scope.
+**install** supports control lines in the **install.cfg** file. These determine which files the descriptor lines below it apply to. Subsequent control lines set new scope.
 
 ```
 The lines are of the form
-[+|-]comma separated list of files or *
+[+|-] whitespace and/or comma separated list of files or *
 
 The '+' enables only the named files to be processed. +* reenables processing for all files
 The '-' will exclude only the named files from processing. -* disables all processing (not particularly useful)
@@ -279,6 +304,6 @@ The '-' will exclude only the named files from processing. -* disables all proce
 ------
 
 ```
-Updated by Mark Ogden 11-Feb-2024
+Updated by Mark Ogden 15-Oct-2025
 ```
 
